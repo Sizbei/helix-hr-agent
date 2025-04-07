@@ -1,103 +1,155 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { ChatBar } from "@/components/ChatBar";
+import { Workspace } from "@/components/Workspace";
+import useHelixStore from "@/lib/store";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { messages, addMessage, setLoading, addSequence, addSequenceStep } =
+    useHelixStore();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  // Simulate backend response for demo purposes
+  useEffect(() => {
+    // Listen for user messages to generate AI responses
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage && lastMessage.sender === "user") {
+      setLoading(true);
+
+      // Simulate API call delay
+      setTimeout(() => {
+        // Process different types of user inputs
+        const content = lastMessage.content.toLowerCase();
+
+        if (
+          content.includes("sales sequence") ||
+          content.includes("recruiting sequence")
+        ) {
+          // Extract role from message (e.g. "Write a sales sequence for software engineers")
+          const roleMatcher = content.match(/for\s+([a-z\s]+)/i);
+          const role = roleMatcher
+            ? roleMatcher[1].trim()
+            : "Software Engineer";
+
+          addMessage(
+            `Starting a sequence for ${role}. Would you like to begin with an email or LinkedIn message?`,
+            "ai"
+          );
+
+          // Create a new sequence
+          const sequenceId = addSequence(role);
+        } else if (content.includes("email")) {
+          const activeSequence = useHelixStore.getState().getActiveSequence();
+
+          if (activeSequence) {
+            addMessage(
+              "Great! I've added an email step to your sequence. What would you like to say in this email?",
+              "ai"
+            );
+
+            // Add email step after delay
+            setTimeout(() => {
+              addSequenceStep(activeSequence.id, {
+                stepType: "email",
+                subject: `New opportunity at Trajillo Tech`,
+                body: `Hi {{first name}} - I've been keeping up with the news in LA. I hope you and your family are safe. Let us know if we can help in any way.`,
+                delay: 0,
+                order: activeSequence.steps.length,
+              });
+
+              setLoading(true);
+
+              // Simulate the AI thinking about the next step
+              setTimeout(() => {
+                addMessage(
+                  "What would you like to say in the next step?",
+                  "ai"
+                );
+                setLoading(false);
+              }, 1000);
+            }, 500);
+          }
+        } else if (
+          content.includes("support with our gov") ||
+          content.includes("aid program")
+        ) {
+          const activeSequence = useHelixStore.getState().getActiveSequence();
+
+          if (activeSequence) {
+            addMessage(
+              "I've added information about the government aid program. Would you like to add another step?",
+              "ai"
+            );
+
+            // Add email step with program info
+            setTimeout(() => {
+              addSequenceStep(activeSequence.id, {
+                stepType: "email",
+                subject: `Government Aid for Wildfire Recovery`,
+                body: `I work at Trajillo Tech - we release a new government aid program for homeowners affected by the wildfires. Up to $2mil in aid. Let me know if you'd like to learn more.`,
+                delay: 2,
+                order: activeSequence.steps.length,
+              });
+
+              setLoading(true);
+
+              // Add follow-up information
+              setTimeout(() => {
+                addSequenceStep(activeSequence.id, {
+                  stepType: "email",
+                  subject: `More details: Government Aid Program`,
+                  body: `Also .. it's a fully government supported program. No cost or burden to you whatsoever.\n\nLet me know!`,
+                  delay: 3,
+                  order: activeSequence.steps.length + 1,
+                });
+
+                setLoading(false);
+              }, 1000);
+            }, 500);
+          }
+        } else if (
+          content.includes("4th step") ||
+          content.includes("reach out")
+        ) {
+          const activeSequence = useHelixStore.getState().getActiveSequence();
+
+          if (activeSequence) {
+            addMessage("I've added a follow-up step to your sequence.", "ai");
+
+            // Add a 4th step
+            setTimeout(() => {
+              addSequenceStep(activeSequence.id, {
+                stepType: "linkedin",
+                body: `{{first_name}} - let me know if I can help! I'm here to serve as a resource.`,
+                delay: 5,
+                order: activeSequence.steps.length,
+              });
+
+              setLoading(false);
+            }, 500);
+          }
+        } else {
+          // Default response
+          addMessage(
+            'I can help you create recruiting sequences. Try saying "Write a recruiting sequence for software engineers" or "Create a sales sequence for homeowners in LA".',
+            "ai"
+          );
+        }
+
+        setLoading(false);
+      }, 1500);
+    }
+  }, [messages, addMessage, setLoading, addSequence, addSequenceStep]);
+
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50">
+      <div className="flex w-full h-full">
+        <ChatBar />
+        <Workspace />
+      </div>
+      <Toaster />
     </div>
   );
 }
