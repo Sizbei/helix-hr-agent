@@ -72,9 +72,13 @@ export function EmptyState() {
               Try asking Helix:
             </h4>
             <ul className="space-y-2 text-sm text-slate-600">
-              <li>• "Write a recruiting sequence for Software Engineers"</li>
-              <li>• "Create a sales outreach for Product Managers"</li>
-              <li>• "Help me craft messages for Senior Designers"</li>
+              <li>
+                • &quot;Write a recruiting sequence for Software Engineers&quot;
+              </li>
+              <li>
+                • &quot;Create a sales outreach for Product Managers&quot;
+              </li>
+              <li>• &quot;Help me craft messages for Senior Designers&quot;</li>
             </ul>
           </div>
         </div>
