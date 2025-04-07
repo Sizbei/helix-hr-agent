@@ -4,30 +4,26 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ChatBar } from "@/components/ChatBar";
 import { Workspace } from "@/components/Workspace";
+import { Card } from "@/components/ui/card";
 import useHelixStore from "@/lib/store";
 
 export default function Home() {
   const { messages, addMessage, setLoading, addSequence, addSequenceStep } =
     useHelixStore();
 
-  // Simulate backend response for demo purposes
   useEffect(() => {
-    // Listen for user messages to generate AI responses
     const lastMessage = messages[messages.length - 1];
 
     if (lastMessage && lastMessage.sender === "user") {
       setLoading(true);
 
-      // Simulate API call delay
       setTimeout(() => {
-        // Process different types of user inputs
         const content = lastMessage.content.toLowerCase();
 
         if (
           content.includes("sales sequence") ||
           content.includes("recruiting sequence")
         ) {
-          // Extract role from message (e.g. "Write a sales sequence for software engineers")
           const roleMatcher = content.match(/for\s+([a-z\s]+)/i);
           const role = roleMatcher
             ? roleMatcher[1].trim()
@@ -38,7 +34,6 @@ export default function Home() {
             "ai"
           );
 
-          // Create a new sequence
           const sequenceId = addSequence(role);
         } else if (content.includes("email")) {
           const activeSequence = useHelixStore.getState().getActiveSequence();
@@ -49,7 +44,6 @@ export default function Home() {
               "ai"
             );
 
-            // Add email step after delay
             setTimeout(() => {
               addSequenceStep(activeSequence.id, {
                 stepType: "email",
@@ -61,7 +55,6 @@ export default function Home() {
 
               setLoading(true);
 
-              // Simulate the AI thinking about the next step
               setTimeout(() => {
                 addMessage(
                   "What would you like to say in the next step?",
@@ -83,7 +76,6 @@ export default function Home() {
               "ai"
             );
 
-            // Add email step with program info
             setTimeout(() => {
               addSequenceStep(activeSequence.id, {
                 stepType: "email",
@@ -95,7 +87,6 @@ export default function Home() {
 
               setLoading(true);
 
-              // Add follow-up information
               setTimeout(() => {
                 addSequenceStep(activeSequence.id, {
                   stepType: "email",
@@ -118,7 +109,6 @@ export default function Home() {
           if (activeSequence) {
             addMessage("I've added a follow-up step to your sequence.", "ai");
 
-            // Add a 4th step
             setTimeout(() => {
               addSequenceStep(activeSequence.id, {
                 stepType: "linkedin",
@@ -131,7 +121,6 @@ export default function Home() {
             }, 500);
           }
         } else {
-          // Default response
           addMessage(
             'I can help you create recruiting sequences. Try saying "Write a recruiting sequence for software engineers" or "Create a sales sequence for homeowners in LA".',
             "ai"
@@ -145,10 +134,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50">
-      <div className="flex w-full h-full">
-        <ChatBar />
-        <Workspace />
-      </div>
+      <Card className="w-full h-full overflow-hidden">
+        <div className="flex w-full h-full">
+          <ChatBar />
+          <Workspace />
+        </div>
+      </Card>
       <Toaster />
     </div>
   );
