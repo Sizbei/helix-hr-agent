@@ -96,11 +96,24 @@ const useHelixStore = create<HelixState>((set, get) => ({
 
   // Sequence actions
   addSequence: (role) => {
+    // Check for existing sequence with same role (case-insensitive)
+    const existingSequence = get().sequences.find(
+      (seq) => seq.role.toLowerCase() === role.toLowerCase()
+    );
+
+    // If sequence exists, just set it as active and return its id
+    if (existingSequence) {
+      set({ activeSequenceId: existingSequence.id });
+      return existingSequence.id;
+    }
+
+    // Otherwise create new sequence
     const newSequence = {
       id: uuidv4(),
       role,
       steps: [],
     };
+
     set((state) => ({
       sequences: [...state.sequences, newSequence],
       activeSequenceId: newSequence.id,

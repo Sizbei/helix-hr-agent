@@ -32,22 +32,41 @@ export function Workspace() {
       try {
         setIsSubmitting(true);
 
-        // Call API to create sequence
-        await ApiService.createSequence(sessionId, newRoleName.trim());
+        // Check if a sequence with this role already exists
+        const exists = sequences.some(
+          (seq) => seq.role.toLowerCase() === newRoleName.trim().toLowerCase()
+        );
 
-        // Update local state
-        addSequence(newRoleName.trim());
+        if (exists) {
+          // Just switch to the existing sequence
+          const existingSequence = sequences.find(
+            (seq) => seq.role.toLowerCase() === newRoleName.trim().toLowerCase()
+          );
+          if (existingSequence) {
+            setActiveSequence(existingSequence.id);
+            toast.info(
+              `Switched to existing sequence for ${newRoleName.trim()}`
+            );
+          }
+        } else {
+          // Call API to create sequence
+          const response = await ApiService.createSequence(
+            sessionId,
+            newRoleName.trim()
+          );
+
+          // Only add locally if API call succeeded
+          if (response && response.success) {
+            addSequence(newRoleName.trim());
+            toast.success(`Sequence created for ${newRoleName.trim()}`);
+          }
+        }
+
         setNewRoleName("");
         setIsCreatingSequence(false);
-        toast.success(`Sequence created for ${newRoleName.trim()}`);
       } catch (error) {
         console.error("Error creating sequence:", error);
         toast.error("Failed to create sequence");
-
-        // Still update local state for development if API fails
-        addSequence(newRoleName.trim());
-        setNewRoleName("");
-        setIsCreatingSequence(false);
       } finally {
         setIsSubmitting(false);
       }

@@ -61,7 +61,7 @@ export function WebSocketClient() {
     // Listen for sequence update events
     socketInstance.on("sequence_update", (data) => {
       if (data.role && data.steps) {
-        // Check if this sequence already exists
+        // Check if this sequence already exists (case-insensitive)
         const existingSequence = useHelixStore
           .getState()
           .sequences.find(

@@ -1,283 +1,243 @@
-import { useEffect, useState } from "react";
-import useHelixStore from "./store";
-import { APP_CONFIG } from "./config";
-import { ApiService } from "./api";
+// File: lib/session.ts
+import { useState, useEffect, useCallback } from "react";
 
-export function useSession() {
-  const { sessionId, setSessionId } = useHelixStore();
-  const [isLoading, setIsLoading] = useState(true);
+// Base API URL - should be configured from environment in a real app
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+interface UseSessionReturn {
+  sessionId: string;
+  userIdentifier: string | null;
+  registerEmail: (email: string) => Promise<boolean>;
+  exportSession: () => Promise<any>;
+  importSession: (data: any) => Promise<boolean>;
+  deleteSession: () => Promise<boolean>;
+  getUserSessions: (email: string) => Promise<any[]>;
+  recoverSession: (email: string, sessionId: string) => Promise<boolean>;
+}
+
+export function useSession(): UseSessionReturn {
+  const [sessionId, setSessionId] = useState<string>("");
   const [userIdentifier, setUserIdentifier] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  // Initialize or restore session on mount
+  // Initialize session on mount
   useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+    const storedSessionId = localStorage.getItem("sessionId");
+    const storedEmail = localStorage.getItem("userEmail");
 
-        // Try to get existing session ID from localStorage
-        const storedSessionId = localStorage.getItem("sessionId");
-        const storedUserIdentifier = localStorage.getItem("userIdentifier");
-
-        // Only restore session if it's not expired
-        const lastActivity = localStorage.getItem("lastSessionActivity");
-        const isSessionExpired =
-          lastActivity &&
-          Date.now() - parseInt(lastActivity) > APP_CONFIG.SESSION_TTL;
-
-        // Create or restore session via API
-        const response = await ApiService.createOrRestoreSession(
-          isSessionExpired ? undefined : storedSessionId ?? undefined,
-          storedUserIdentifier ?? undefined
-        );
-
-        if (response && response.data) {
-          // Get session ID from response
-          const newSessionId = response.data.sessionId;
-
-          // Update Zustand store
-          setSessionId(newSessionId);
-
-          // Save to localStorage for persistence
-          localStorage.setItem("sessionId", newSessionId);
-          localStorage.setItem("lastSessionActivity", Date.now().toString());
-
-          // If user provided an identifier, store it
-          if (storedUserIdentifier) {
-            setUserIdentifier(storedUserIdentifier);
-          }
-
-          // Import sequences if available
-          if (response.data.sequences && response.data.sequences.length > 0) {
-            // Use the ChatApiService to handle sequence updates
-            const { ChatApiService } = await import("./chatapi");
-            await ChatApiService.handleSequenceUpdate(response.data.sequences);
-          }
-        }
-      } catch (err) {
-        console.error("Error initializing session:", err);
-        setError("Failed to initialize session");
-
-        // Generate a new session ID if restore fails
-        const newSessionId = generateUUID();
-        setSessionId(newSessionId);
-        localStorage.setItem("sessionId", newSessionId);
-        localStorage.setItem("lastSessionActivity", Date.now().toString());
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeSession();
-  }, [setSessionId]);
-
-  // Update last activity timestamp periodically
-  useEffect(() => {
-    const updateActivity = () => {
-      localStorage.setItem("lastSessionActivity", Date.now().toString());
-    };
-
-    // Update on user interaction
-    window.addEventListener("click", updateActivity);
-    window.addEventListener("keypress", updateActivity);
-
-    // Also update every 5 minutes if the app is open
-    const interval = setInterval(updateActivity, 5 * 60 * 1000);
-
-    return () => {
-      window.removeEventListener("click", updateActivity);
-      window.removeEventListener("keypress", updateActivity);
-      clearInterval(interval);
-    };
-  }, []);
-
-  // Register user email
-  const registerEmail = async (email: string) => {
-    try {
-      setIsLoading(true);
-      await ApiService.registerEmail(sessionId, email);
-
-      // Update local state and storage
-      setUserIdentifier(email);
-      localStorage.setItem("userIdentifier", email);
-
-      return true;
-    } catch (err) {
-      console.error("Error registering email:", err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Get all sessions for a user by email
-  // Get all sessions for a user by email
-  const getUserSessions = async (email: string) => {
-    try {
-      const response = await ApiService.getUserSessions(email);
-
-      // Check different possible response structures
-      if (response && response.data && response.data.sessions) {
-        return response.data.sessions;
-      } else if (response && response.data) {
-        // If the sessions are directly in the data property
-        return response.data;
-      } else if (Array.isArray(response)) {
-        // If the response itself is the array of sessions
-        return response;
-      }
-
-      // Return empty array as fallback
-      console.warn(
-        "Unexpected response structure from getUserSessions:",
-        response
-      );
-      return [];
-    } catch (err) {
-      console.error("Error getting user sessions:", err);
-      return []; // Return empty array instead of throwing
-    }
-  };
-
-  // Recover a specific session by email and sessionId
-  const recoverSession = async (email: string, targetSessionId: string) => {
-    try {
-      setIsLoading(true);
-      const response = await ApiService.recoverSession(email, targetSessionId);
-
-      if (response && response.data) {
-        // Update Zustand store
-        setSessionId(targetSessionId);
-
-        // Save to localStorage for persistence
-        localStorage.setItem("sessionId", targetSessionId);
-        localStorage.setItem("lastSessionActivity", Date.now().toString());
-        localStorage.setItem("userIdentifier", email);
-        setUserIdentifier(email);
-
-        // Reset current store state
-        useHelixStore.setState({
-          messages: [
-            {
-              id: generateUUID(),
-              sender: "ai",
-              content:
-                "Session recovered! How can I help you with your recruiting outreach?",
-              timestamp: new Date(),
-            },
-          ],
-          sequences: [],
-          activeSequenceId: null,
-        });
-
-        // Import sequences if available
-        if (response.data.sequences && response.data.sequences.length > 0) {
-          // Use the ChatApiService to handle sequence updates
-          const { ChatApiService } = await import("./chatapi");
-          await ChatApiService.handleSequenceUpdate(response.data.sequences);
-        }
-
-        return true;
-      }
-
-      return false;
-    } catch (err) {
-      console.error("Error recovering session:", err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Export user sessions
-  const exportSession = async () => {
-    try {
-      const response = await ApiService.exportSessionData(sessionId);
-      return response.data;
-    } catch (err) {
-      console.error("Error exporting session:", err);
-      throw err;
-    }
-  };
-
-  // Import session data
-  const importSession = async (importData: any) => {
-    try {
-      const response = await ApiService.importSessionData(
-        sessionId,
-        importData
-      );
-
-      if (response && response.data && response.data.sequences) {
-        // Use the ChatApiService to handle sequence updates
-        const { ChatApiService } = await import("./chatapi");
-        await ChatApiService.handleSequenceUpdate(response.data.sequences);
-      }
-
-      return true;
-    } catch (err) {
-      console.error("Error importing session:", err);
-      throw err;
-    }
-  };
-
-  // Delete/deactivate the current session
-  const deleteSession = async () => {
-    try {
-      await ApiService.deleteSession(sessionId);
-
-      // Clear local storage
-      localStorage.removeItem("sessionId");
-      localStorage.removeItem("lastSessionActivity");
-
-      // Generate a new session ID
-      const newSessionId = generateUUID();
+    if (storedSessionId) {
+      setSessionId(storedSessionId);
+    } else {
+      // Generate a new session ID if none exists
+      const newSessionId = generateSessionId();
       setSessionId(newSessionId);
       localStorage.setItem("sessionId", newSessionId);
-      localStorage.setItem("lastSessionActivity", Date.now().toString());
+    }
 
-      // Reset store
-      useHelixStore.setState({
-        messages: [
-          {
-            id: generateUUID(),
-            sender: "ai",
-            content:
-              "Hi, I'm Helix! I can help you create recruiting outreach sequences. What role are you hiring for?",
-            timestamp: new Date(),
+    if (storedEmail) {
+      setUserIdentifier(storedEmail);
+    }
+  }, []);
+
+  // Generate a UUID for session ID
+  const generateSessionId = (): string => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0,
+          v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
+  };
+
+  // Register an email with the current session
+  const registerEmail = useCallback(
+    async (email: string): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_URL}/session/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ],
-        sequences: [],
-        activeSequenceId: null,
+          body: JSON.stringify({
+            email,
+            sessionId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to register email");
+        }
+
+        // Store email in local storage
+        localStorage.setItem("userEmail", email);
+        setUserIdentifier(email);
+
+        return true;
+      } catch (error) {
+        console.error("Error registering email:", error);
+        return false;
+      }
+    },
+    [sessionId]
+  );
+
+  // Get user sessions by email
+  const getUserSessions = useCallback(async (email: string): Promise<any[]> => {
+    try {
+      const response = await fetch(
+        `${API_URL}/session/user/${encodeURIComponent(email)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get user sessions");
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error("Error getting user sessions:", error);
+      return [];
+    }
+  }, []);
+
+  // Recover a specific session
+  const recoverSession = useCallback(
+    async (email: string, targetSessionId: string): Promise<boolean> => {
+      try {
+        // First, verify the session exists and belongs to this email
+        const sessions = await getUserSessions(email);
+        const sessionExists = sessions.some(
+          (session) => session.session_id === targetSessionId
+        );
+
+        if (!sessionExists) {
+          throw new Error(
+            "Session not found or not associated with this email"
+          );
+        }
+
+        // Set the session ID and email in local storage
+        localStorage.setItem("sessionId", targetSessionId);
+        localStorage.setItem("userEmail", email);
+
+        // Update state
+        setSessionId(targetSessionId);
+        setUserIdentifier(email);
+
+        // Reload the page to refresh data with the new session
+        window.location.reload();
+
+        return true;
+      } catch (error) {
+        console.error("Error recovering session:", error);
+        return false;
+      }
+    },
+    [getUserSessions]
+  );
+
+  // Export session data
+  const exportSession = useCallback(async (): Promise<any> => {
+    try {
+      const response = await fetch(`${API_URL}/session/export/${sessionId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
-      return true;
-    } catch (err) {
-      console.error("Error deleting session:", err);
-      throw err;
+      if (!response.ok) {
+        throw new Error("Failed to export session data");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error exporting session:", error);
+      throw error;
     }
-  };
+  }, [sessionId]);
+
+  // Import session data
+  const importSession = useCallback(async (data: any): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/session/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to import session data");
+      }
+
+      const result = await response.json();
+
+      if (result.sessionId) {
+        // Switch to the imported session
+        setSessionId(result.sessionId);
+        localStorage.setItem("sessionId", result.sessionId);
+
+        // Reload the page to refresh data with the new session
+        window.location.reload();
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error importing session:", error);
+      return false;
+    }
+  }, []);
+
+  // Delete current session
+  const deleteSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/session/${sessionId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete session");
+      }
+
+      // Generate a new session ID
+      const newSessionId = generateSessionId();
+      setSessionId(newSessionId);
+      localStorage.setItem("sessionId", newSessionId);
+
+      // Clear user identifier
+      setUserIdentifier(null);
+      localStorage.removeItem("userEmail");
+
+      // Reload the page to refresh data with the new session
+      window.location.reload();
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      return false;
+    }
+  }, [sessionId]);
 
   return {
     sessionId,
-    isLoading,
     userIdentifier,
-    error,
     registerEmail,
-    getUserSessions,
-    recoverSession,
     exportSession,
     importSession,
     deleteSession,
+    getUserSessions,
+    recoverSession,
   };
-}
-
-// Utility function to generate UUID (simplified version)
-function generateUUID() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
 }
