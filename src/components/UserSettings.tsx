@@ -9,6 +9,8 @@ import {
   Trash2,
   FileText,
   ArrowRight,
+  Save,
+  Mail,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +37,7 @@ export function UserSettings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("account");
   const [userEmail, setUserEmail] = useState("");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [userSessions, setUserSessions] = useState<any[]>([]);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -42,31 +45,41 @@ export function UserSettings() {
   const {
     sessionId,
     userIdentifier,
-    setUserIdentifier,
+    registerEmail,
     exportSession,
     importSession,
     deleteSession,
     getUserSessions,
-    switchSession,
+    recoverSession,
   } = useSession();
 
-  // Load user email from localStorage on mount
+  // Load user email from session on mount
   useEffect(() => {
     if (userIdentifier) {
       setUserEmail(userIdentifier);
     }
   }, [userIdentifier]);
 
-  const handleSaveUserInfo = () => {
+  // Register email
+  const handleSaveUserInfo = async () => {
     if (userEmail && userEmail.includes("@")) {
-      setUserIdentifier(userEmail);
-      toast.success("User information saved");
-      loadUserSessions();
+      try {
+        setIsLoading(true);
+        await registerEmail(userEmail);
+        toast.success("Email registered successfully!");
+        loadUserSessions();
+      } catch (error) {
+        console.error("Error registering email:", error);
+        toast.error("Failed to register email");
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       toast.error("Please enter a valid email address");
     }
   };
 
+  // Load user sessions by email
   const loadUserSessions = async () => {
     if (!userEmail || !userEmail.includes("@")) {
       return;
@@ -78,7 +91,61 @@ export function UserSettings() {
       setUserSessions(sessions || []);
     } catch (error) {
       console.error("Error loading user sessions:", error);
-      toast.error("Failed to load your sessions");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Recover sessions by email
+  const handleRecoverSession = async () => {
+    if (!recoveryEmail || !recoveryEmail.includes("@")) {
+      toast.error("Please enter a valid recovery email");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const sessions = await getUserSessions(recoveryEmail);
+
+      if (sessions && sessions.length > 0) {
+        setUserSessions(sessions);
+        setActiveTab("sessions");
+        toast.success("Found sessions associated with your email");
+      } else {
+        toast.info("No sessions found for this email");
+      }
+    } catch (error) {
+      console.error("Error recovering sessions:", error);
+      toast.error("Failed to recover sessions");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Switch to a specific session
+  const handleSwitchSession = async (targetSessionId: string) => {
+    try {
+      setIsLoading(true);
+
+      // Use the email we already have
+      const email = userEmail || recoveryEmail;
+
+      if (!email) {
+        toast.error("Email is required to switch sessions");
+        return;
+      }
+
+      const success = await recoverSession(email, targetSessionId);
+
+      if (success) {
+        toast.success("Session switched successfully");
+        setIsDialogOpen(false);
+      } else {
+        toast.error("Failed to switch to selected session");
+      }
+    } catch (error) {
+      console.error("Error switching session:", error);
+      toast.error("Failed to switch session");
     } finally {
       setIsLoading(false);
     }
@@ -163,20 +230,6 @@ export function UserSettings() {
     }
   };
 
-  const handleSwitchSession = async (newSessionId: string) => {
-    try {
-      setIsLoading(true);
-      await switchSession(newSessionId);
-      toast.success("Session switched successfully");
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error switching session:", error);
-      toast.error("Failed to switch session");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Format session date for display
   const formatSessionDate = (dateString: string) => {
     try {
@@ -222,7 +275,7 @@ export function UserSettings() {
 
               <div className="space-y-2">
                 <h3 className="font-semibold text-sm">
-                  Your Email (for session recovery)
+                  Register Email (for session recovery)
                 </h3>
                 <div className="flex gap-2">
                   <Input
@@ -232,12 +285,38 @@ export function UserSettings() {
                     className="flex-1"
                   />
                   <Button onClick={handleSaveUserInfo} disabled={isLoading}>
+                    <Save className="h-4 w-4 mr-1" />
                     Save
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Providing your email allows you to access your sequences from
-                  different devices.
+                  Registering your email allows you to recover your sessions
+                  from different devices.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-4 border-t border-border">
+                <h3 className="font-semibold text-sm">
+                  Recover Sessions by Email
+                </h3>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter your email to recover sessions"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleRecoverSession}
+                    disabled={isLoading}
+                    variant="outline"
+                  >
+                    <Mail className="h-4 w-4 mr-1" />
+                    Recover
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Retrieve all sessions associated with your email.
                 </p>
               </div>
 
@@ -283,79 +362,68 @@ export function UserSettings() {
 
             {/* Sessions Tab */}
             <TabsContent value="sessions" className="py-4 space-y-4">
-              {userIdentifier ? (
-                <>
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Your Sessions</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={loadUserSessions}
-                      disabled={isLoading}
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">Your Sessions</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadUserSessions}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Loading..." : "Refresh"}
+                </Button>
+              </div>
+
+              {userSessions.length > 0 ? (
+                <div className="space-y-3">
+                  {userSessions.map((session) => (
+                    <Card
+                      key={session.sessionId}
+                      className={
+                        session.sessionId === sessionId ? "border-primary" : ""
+                      }
                     >
-                      {isLoading ? "Loading..." : "Refresh"}
-                    </Button>
-                  </div>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex justify-between">
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-2 text-primary" />
+                            <span>
+                              {session.sessionId === sessionId
+                                ? "Current Session"
+                                : `Session from ${formatSessionDate(
+                                    session.lastActivity
+                                  )}`}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {session.sequenceCount} sequences
+                          </span>
+                        </CardTitle>
+                      </CardHeader>
 
-                  {userSessions.length > 0 ? (
-                    <div className="space-y-3">
-                      {userSessions.map((session) => (
-                        <Card
-                          key={session.sessionId}
-                          className={
-                            session.sessionId === sessionId
-                              ? "border-primary"
-                              : ""
-                          }
-                        >
-                          <CardHeader className="py-3">
-                            <CardTitle className="text-sm font-medium flex justify-between">
-                              <div className="flex items-center">
-                                <FileText className="h-4 w-4 mr-2 text-primary" />
-                                <span>
-                                  {session.sessionId === sessionId
-                                    ? "Current Session"
-                                    : `Session from ${formatSessionDate(
-                                        session.lastActivity
-                                      )}`}
-                                </span>
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {session.sequenceCount} sequences
-                              </span>
-                            </CardTitle>
-                          </CardHeader>
-
-                          {session.sessionId !== sessionId && (
-                            <CardFooter className="py-2 px-4 flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleSwitchSession(session.sessionId)
-                                }
-                                disabled={isLoading}
-                              >
-                                <ArrowRight className="h-4 w-4 mr-1" />
-                                Switch to this session
-                              </Button>
-                            </CardFooter>
-                          )}
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {isLoading
-                        ? "Loading your sessions..."
-                        : "No sessions found. Save your email above to track your sessions."}
-                    </div>
-                  )}
-                </>
+                      {session.sessionId !== sessionId && (
+                        <CardFooter className="py-2 px-4 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleSwitchSession(session.sessionId)
+                            }
+                            disabled={isLoading}
+                          >
+                            <ArrowRight className="h-4 w-4 mr-1" />
+                            Switch to this session
+                          </Button>
+                        </CardFooter>
+                      )}
+                    </Card>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  Please add your email address in the Account tab to view your
-                  sessions.
+                  {isLoading
+                    ? "Loading your sessions..."
+                    : "No sessions found. Register your email in the Account tab to track your sessions."}
                 </div>
               )}
             </TabsContent>

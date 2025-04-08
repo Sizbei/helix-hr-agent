@@ -178,6 +178,32 @@ export const ApiService = {
     }
   },
 
+  // Register email with an existing session
+  async registerEmail(sessionId: string, email: string): Promise<any> {
+    try {
+      const response = await api.post("/user/register", {
+        sessionId,
+        email,
+      });
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Recover a specific session by email and sessionId
+  async recoverSession(email: string, sessionId: string): Promise<any> {
+    try {
+      const response = await api.post("/user/recover", {
+        email,
+        sessionId,
+      });
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
   // Get all sessions for a user
   async getUserSessions(userIdentifier: string): Promise<any> {
     try {

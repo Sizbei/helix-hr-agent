@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import useHelixStore from "./store";
-import axios from "axios";
 import { APP_CONFIG } from "./config";
-
-// API base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { ApiService } from "./api";
 
 export function useSession() {
   const { sessionId, setSessionId } = useHelixStore();
@@ -30,14 +27,14 @@ export function useSession() {
           Date.now() - parseInt(lastActivity) > APP_CONFIG.SESSION_TTL;
 
         // Create or restore session via API
-        const response = await axios.post(`${API_URL}/user/session`, {
-          sessionId: isSessionExpired ? null : storedSessionId,
-          userIdentifier: storedUserIdentifier || undefined,
-        });
+        const response = await ApiService.createOrRestoreSession(
+          isSessionExpired ? undefined : storedSessionId ?? undefined,
+          storedUserIdentifier ?? undefined
+        );
 
-        if (response.data && response.data.data) {
+        if (response && response.data) {
           // Get session ID from response
-          const newSessionId = response.data.data.sessionId;
+          const newSessionId = response.data.sessionId;
 
           // Update Zustand store
           setSessionId(newSessionId);
@@ -52,15 +49,10 @@ export function useSession() {
           }
 
           // Import sequences if available
-          if (
-            response.data.data.sequences &&
-            response.data.data.sequences.length > 0
-          ) {
+          if (response.data.sequences && response.data.sequences.length > 0) {
             // Use the ChatApiService to handle sequence updates
             const { ChatApiService } = await import("./chatapi");
-            await ChatApiService.handleSequenceUpdate(
-              response.data.data.sequences
-            );
+            await ChatApiService.handleSequenceUpdate(response.data.sequences);
           }
         }
       } catch (err) {
@@ -100,37 +92,109 @@ export function useSession() {
     };
   }, []);
 
-  // Utility to set user identifier (email, etc.)
-  const setUserIdentifierAndSave = (identifier: string) => {
-    setUserIdentifier(identifier);
-    localStorage.setItem("userIdentifier", identifier);
+  // Register user email
+  const registerEmail = async (email: string) => {
+    try {
+      setIsLoading(true);
+      await ApiService.registerEmail(sessionId, email);
+
+      // Update local state and storage
+      setUserIdentifier(email);
+      localStorage.setItem("userIdentifier", email);
+
+      return true;
+    } catch (err) {
+      console.error("Error registering email:", err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get all sessions for a user by email
+  const getUserSessions = async (email: string) => {
+    try {
+      const response = await ApiService.getUserSessions(email);
+      return response.data.sessions;
+    } catch (err) {
+      console.error("Error getting user sessions:", err);
+      throw err;
+    }
+  };
+
+  // Recover a specific session by email and sessionId
+  const recoverSession = async (email: string, targetSessionId: string) => {
+    try {
+      setIsLoading(true);
+      const response = await ApiService.recoverSession(email, targetSessionId);
+
+      if (response && response.data) {
+        // Update Zustand store
+        setSessionId(targetSessionId);
+
+        // Save to localStorage for persistence
+        localStorage.setItem("sessionId", targetSessionId);
+        localStorage.setItem("lastSessionActivity", Date.now().toString());
+        localStorage.setItem("userIdentifier", email);
+        setUserIdentifier(email);
+
+        // Reset current store state
+        useHelixStore.setState({
+          messages: [
+            {
+              id: generateUUID(),
+              sender: "ai",
+              content:
+                "Session recovered! How can I help you with your recruiting outreach?",
+              timestamp: new Date(),
+            },
+          ],
+          sequences: [],
+          activeSequenceId: null,
+        });
+
+        // Import sequences if available
+        if (response.data.sequences && response.data.sequences.length > 0) {
+          // Use the ChatApiService to handle sequence updates
+          const { ChatApiService } = await import("./chatapi");
+          await ChatApiService.handleSequenceUpdate(response.data.sequences);
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error("Error recovering session:", err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Export user sessions
   const exportSession = async () => {
     try {
-      const response = await axios.get(
-        `${API_URL}/user/session/${sessionId}/export`
-      );
-      return response.data.data;
+      const response = await ApiService.exportSessionData(sessionId);
+      return response.data;
     } catch (err) {
       console.error("Error exporting session:", err);
       throw err;
     }
   };
 
-  // Import user data into current session
+  // Import session data
   const importSession = async (importData: any) => {
     try {
-      const response = await axios.post(`${API_URL}/user/session/import`, {
+      const response = await ApiService.importSessionData(
         sessionId,
-        importData,
-      });
+        importData
+      );
 
-      if (response.data && response.data.data && response.data.data.sequences) {
+      if (response && response.data && response.data.sequences) {
         // Use the ChatApiService to handle sequence updates
         const { ChatApiService } = await import("./chatapi");
-        await ChatApiService.handleSequenceUpdate(response.data.data.sequences);
+        await ChatApiService.handleSequenceUpdate(response.data.sequences);
       }
 
       return true;
@@ -143,7 +207,7 @@ export function useSession() {
   // Delete/deactivate the current session
   const deleteSession = async () => {
     try {
-      await axios.delete(`${API_URL}/user/session/${sessionId}`);
+      await ApiService.deleteSession(sessionId);
 
       // Clear local storage
       localStorage.removeItem("sessionId");
@@ -177,88 +241,17 @@ export function useSession() {
     }
   };
 
-  // Get all sessions for a user
-  const getUserSessions = async (identifier: string) => {
-    try {
-      const response = await axios.get(
-        `${API_URL}/user/sessions/${encodeURIComponent(identifier)}`
-      );
-      return response.data.data.sessions;
-    } catch (err) {
-      console.error("Error getting user sessions:", err);
-      throw err;
-    }
-  };
-
-  // Switch to another session
-  const switchSession = async (newSessionId: string) => {
-    try {
-      setIsLoading(true);
-
-      // Create or restore session via API
-      const response = await axios.post(`${API_URL}/user/session`, {
-        sessionId: newSessionId,
-        userIdentifier,
-      });
-
-      if (response.data && response.data.data) {
-        // Update Zustand store
-        setSessionId(newSessionId);
-
-        // Save to localStorage for persistence
-        localStorage.setItem("sessionId", newSessionId);
-        localStorage.setItem("lastSessionActivity", Date.now().toString());
-
-        // Reset current store state
-        useHelixStore.setState({
-          messages: [
-            {
-              id: generateUUID(),
-              sender: "ai",
-              content:
-                "Session restored! How can I help you with your recruiting outreach?",
-              timestamp: new Date(),
-            },
-          ],
-          sequences: [],
-          activeSequenceId: null,
-        });
-
-        // Import sequences if available
-        if (
-          response.data.data.sequences &&
-          response.data.data.sequences.length > 0
-        ) {
-          // Use the ChatApiService to handle sequence updates
-          const { ChatApiService } = await import("./chatapi");
-          await ChatApiService.handleSequenceUpdate(
-            response.data.data.sequences
-          );
-        }
-
-        return true;
-      }
-
-      return false;
-    } catch (err) {
-      console.error("Error switching session:", err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return {
     sessionId,
     isLoading,
     userIdentifier,
     error,
-    setUserIdentifier: setUserIdentifierAndSave,
+    registerEmail,
+    getUserSessions,
+    recoverSession,
     exportSession,
     importSession,
     deleteSession,
-    getUserSessions,
-    switchSession,
   };
 }
 
