@@ -156,7 +156,7 @@ export default function Home() {
   return (
     <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-background-alt p-6">
       <Card className="w-full max-w-7xl h-[90vh] overflow-hidden bg-background border-border shadow-2xl">
-        <CardContent className="p-0">
+        <CardContent className="p-0 h-full flex flex-col">
           <div className="flex flex-col w-full h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border bg-background">
@@ -186,7 +186,7 @@ export default function Home() {
               {sequences.length > 0 ? (
                 <Workspace />
               ) : (
-                <div className="w-3/5 h-full">
+                <div className="w-3/5 h-full overflow-y-auto">
                   <EmptyState />
                 </div>
               )}

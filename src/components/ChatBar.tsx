@@ -59,9 +59,11 @@ export function ChatBar() {
             >
               <CardContent className="p-3">
                 <p className="whitespace-pre-wrap">{message.content}</p>
-                <span className="text-xs opacity-70 mt-1 block">
-                  {format(message.timestamp, "h:mm a")}
-                </span>
+                <div className="text-right">
+                  <span className="text-xs opacity-70 mt-1 inline-block">
+                    {format(message.timestamp, "h:mm a")}
+                  </span>
+                </div>
               </CardContent>
             </Card>
 

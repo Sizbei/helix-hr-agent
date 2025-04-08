@@ -59,7 +59,7 @@ export function Workspace() {
   // EmptyState should be shown instead, but we'll add a fallback anyway
   if (sequences.length === 0) {
     return (
-      <div className="w-3/5 h-full flex flex-col items-center justify-center">
+      <div className="w-3/5 h-full flex flex-col items-center justify-center overflow-y-auto">
         <p className="text-muted-foreground">No sequences available</p>
         <Button
           onClick={() => setIsCreatingSequence(true)}
@@ -124,7 +124,7 @@ export function Workspace() {
       <Tabs
         value={activeSequenceId || sequences[0]?.id}
         onValueChange={setActiveSequence}
-        className="flex-1 flex flex-col"
+        className="flex-1 flex flex-col overflow-hidden"
       >
         <div className="border-b border-border">
           <TabsList className="h-12 bg-muted px-4 rounded-none">
