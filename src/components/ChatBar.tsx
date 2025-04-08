@@ -16,7 +16,7 @@ export function ChatBar() {
   const { messages, addMessage, isLoading } = useHelixStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Add this to scroll to the bottom when new messages arrive
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -43,6 +43,25 @@ export function ChatBar() {
     }
   };
 
+  // Filter messages to remove duplicates
+  // We consider messages as duplicates if they have the same sender and content
+  // and were sent within 2 seconds of each other
+  const filteredMessages = messages.reduce((acc, current) => {
+    // Look at recent messages with the same content and sender
+    const duplicateExists = acc.some(
+      (item) =>
+        item.content === current.content &&
+        item.sender === current.sender &&
+        Math.abs(item.timestamp.getTime() - current.timestamp.getTime()) < 2000
+    );
+
+    if (!duplicateExists) {
+      acc.push(current);
+    }
+
+    return acc;
+  }, [] as typeof messages);
+
   return (
     <div className="w-2/5 h-full border-r border-border flex flex-col bg-background">
       <div className="p-4 border-b border-border">
@@ -50,7 +69,7 @@ export function ChatBar() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
+        {filteredMessages.map((message) => (
           <div
             key={message.id}
             className={cn(

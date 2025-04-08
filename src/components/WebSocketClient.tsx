@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import useHelixStore from "@/lib/store";
 
@@ -8,7 +8,7 @@ import useHelixStore from "@/lib/store";
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export function WebSocketClient() {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const {
     sessionId,
     addMessage,
@@ -17,10 +17,12 @@ export function WebSocketClient() {
     addSequenceStep,
     updateSequenceStep,
   } = useHelixStore();
+  const processedMessagesRef = useRef(new Set<string>());
 
   useEffect(() => {
     // Initialize socket connection
     const socketInstance = io(SOCKET_URL);
+    socketRef.current = socketInstance;
 
     socketInstance.on("connect", () => {
       console.log("WebSocket connected");
@@ -37,10 +39,22 @@ export function WebSocketClient() {
       console.error("WebSocket connection error:", error);
     });
 
-    // Listen for chat message events
+    // Listen for chat message events with duplicate prevention
     socketInstance.on("chat_message", (data) => {
       if (data.response) {
-        addMessage(data.response, "ai");
+        // Create a unique ID for this message to prevent duplicates
+        const messageId = `${data.response}-${Date.now()}`;
+
+        // Only process if we haven't seen this message recently
+        if (!processedMessagesRef.current.has(messageId)) {
+          processedMessagesRef.current.add(messageId);
+          addMessage(data.response, "ai");
+
+          // Clean up old messages from the set after a delay
+          setTimeout(() => {
+            processedMessagesRef.current.delete(messageId);
+          }, 5000);
+        }
       }
     });
 
@@ -48,9 +62,11 @@ export function WebSocketClient() {
     socketInstance.on("sequence_update", (data) => {
       if (data.role && data.steps) {
         // Check if this sequence already exists
-        const existingSequence = sequences.find(
-          (seq) => seq.role.toLowerCase() === data.role.toLowerCase()
-        );
+        const existingSequence = useHelixStore
+          .getState()
+          .sequences.find(
+            (seq) => seq.role.toLowerCase() === data.role.toLowerCase()
+          );
 
         if (existingSequence) {
           // Add/update steps to existing sequence
@@ -106,22 +122,16 @@ export function WebSocketClient() {
       }
     });
 
-    // Set socket instance
-    setSocket(socketInstance);
-
     // Cleanup on unmount
     return () => {
-      socketInstance.emit("leave", { sessionId });
-      socketInstance.disconnect();
+      if (socketRef.current) {
+        socketRef.current.emit("leave", { sessionId });
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
-  }, [
-    sessionId,
-    addMessage,
-    sequences,
-    addSequence,
-    addSequenceStep,
-    updateSequenceStep,
-  ]);
+  }, [sessionId, addMessage, addSequence, addSequenceStep, updateSequenceStep]);
 
-  return null; // This component doesn't render anything
+  // This is a utility component that doesn't render anything visible
+  return null;
 }

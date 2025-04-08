@@ -2,6 +2,9 @@ import { ApiService } from "@/lib/api";
 import useHelixStore from "@/lib/store";
 import { toast } from "sonner";
 
+// Track processed responses to prevent duplicates
+const processedResponses = new Set<string>();
+
 /**
  * ChatApiService provides methods for handling chat operations
  * with backend integration and state management
@@ -29,7 +32,18 @@ export class ChatApiService {
 
       // Handle AI response
       if (data.response) {
-        addMessage(data.response, "ai");
+        // Create a unique identifier for this response
+        const responseId = `${data.response.substring(0, 20)}-${Date.now()}`;
+
+        if (!processedResponses.has(responseId)) {
+          processedResponses.add(responseId);
+          addMessage(data.response, "ai");
+
+          // Clean up old entries after a while
+          setTimeout(() => {
+            processedResponses.delete(responseId);
+          }, 5000);
+        }
       }
 
       // Handle sequence updates if they exist
@@ -141,7 +155,21 @@ export class ChatApiService {
 
         // Add the suggestion to the chat
         if (suggestionData.response) {
-          addMessage(suggestionData.response, "ai");
+          // Create a unique identifier for this suggestion
+          const suggestionId = `${suggestionData.response.substring(
+            0,
+            20
+          )}-${Date.now()}`;
+
+          if (!processedResponses.has(suggestionId)) {
+            processedResponses.add(suggestionId);
+            addMessage(suggestionData.response, "ai");
+
+            // Clean up old entries after a while
+            setTimeout(() => {
+              processedResponses.delete(suggestionId);
+            }, 5000);
+          }
         }
 
         return suggestionData.suggestion;
@@ -170,7 +198,18 @@ export class ChatApiService {
             : `Would you like to add a follow-up ${suggestedChannel} message after ${suggestedDelay} days?`;
 
         // Add suggestion to chat
-        addMessage(suggestionMessage, "ai");
+        const fallbackId = `${suggestionMessage.substring(
+          0,
+          20
+        )}-${Date.now()}`;
+        if (!processedResponses.has(fallbackId)) {
+          processedResponses.add(fallbackId);
+          addMessage(suggestionMessage, "ai");
+
+          setTimeout(() => {
+            processedResponses.delete(fallbackId);
+          }, 5000);
+        }
 
         // Return suggestion data
         return {
