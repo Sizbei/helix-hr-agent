@@ -127,12 +127,12 @@ export function Workspace() {
         className="flex-1 flex flex-col overflow-hidden"
       >
         <div className="border-b border-border">
-          <TabsList className="h-12 bg-muted px-4 rounded-none">
+          <TabsList className="h-12 bg-muted px-4 rounded-4px">
             {sequences.map((sequence) => (
               <TabsTrigger
                 key={sequence.id}
                 value={sequence.id}
-                className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-muted-foreground"
+                className="data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-4px text-muted-foreground"
               >
                 {sequence.role}
               </TabsTrigger>
