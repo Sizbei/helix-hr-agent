@@ -9,10 +9,20 @@ import useHelixStore from "@/lib/store";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/EmptyState";
+// import { ApiService } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function Home() {
-  const { messages, addMessage, setLoading, addSequence, addSequenceStep } =
-    useHelixStore();
+  const {
+    messages,
+    sequences,
+    addMessage,
+    setLoading,
+    sessionId,
+    addSequence,
+    addSequenceStep,
+  } = useHelixStore();
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -21,118 +31,127 @@ export default function Home() {
     if (lastMessage && lastMessage.sender === "user") {
       setLoading(true);
 
-      setTimeout(() => {
-        const content = lastMessage.content.toLowerCase();
-
-        if (
-          content.includes("sales sequence") ||
-          content.includes("recruiting sequence")
-        ) {
-          const roleMatcher = content.match(/for\s+([a-z\s]+)/i);
-          const role = roleMatcher
-            ? roleMatcher[1].trim()
-            : "Software Engineer";
-
-          addMessage(
-            `Starting a sequence for ${role}. Would you like to begin with an email or LinkedIn message?`,
-            "ai"
+      async function processMessage() {
+        try {
+          // This would be the real API call in production
+          // Uncomment when backend is ready
+          /*
+          const data = await ApiService.sendMessage(
+            lastMessage.content,
+            sessionId
           );
-        } else if (content.includes("email")) {
-          const activeSequence = useHelixStore.getState().getActiveSequence();
-
-          if (activeSequence) {
-            addMessage(
-              "Great! I've added an email step to your sequence. What would you like to say in this email?",
-              "ai"
-            );
-
-            setTimeout(() => {
-              addSequenceStep(activeSequence.id, {
-                stepType: "email",
-                subject: `New opportunity at Trajillo Tech`,
-                body: `Hi {{first name}} - I've been keeping up with the news in LA. I hope you and your family are safe. Let us know if we can help in any way.`,
-                delay: 0,
-                order: activeSequence.steps.length,
+          
+          if (data.response) {
+            addMessage(data.response, "ai");
+          }
+          
+          // Handle sequence updates if they exist
+          if (data.sequenceUpdate) {
+            const { role, steps } = data.sequenceUpdate;
+            
+            // Check if this sequence already exists
+            const existingSequence = sequences.find(seq => seq.role.toLowerCase() === role.toLowerCase());
+            
+            if (existingSequence) {
+              // Add steps to existing sequence
+              steps.forEach(step => {
+                if (step) {
+                  addSequenceStep(existingSequence.id, {
+                    stepType: step.stepType || "email",
+                    subject: step.subject,
+                    body: step.body || "",
+                    delay: step.delay || 0,
+                    order: step.order || existingSequence.steps.length
+                  });
+                }
               });
+            } else {
+              // Create a new sequence with these steps
+              const newSequenceId = addSequence(role);
+              
+              steps.forEach(step => {
+                if (step) {
+                  addSequenceStep(newSequenceId, {
+                    stepType: step.stepType || "email",
+                    subject: step.subject,
+                    body: step.body || "",
+                    delay: step.delay || 0,
+                    order: step.order || 0
+                  });
+                }
+              });
+            }
+          }
+          */
 
-              setLoading(true);
+          // For development: simulate API response
+          // Remove this when backend is ready
+          setTimeout(() => {
+            const content = lastMessage.content.toLowerCase();
 
-              setTimeout(() => {
+            if (
+              content.includes("recruiting") ||
+              content.includes("hire") ||
+              content.includes("sequence")
+            ) {
+              // Try to extract a role from the message
+              const roleMatcher = content.match(/for\s+([a-z\s]+)/i);
+              const roleName = roleMatcher ? roleMatcher[1].trim() : null;
+
+              if (roleName) {
+                // Simulate creating a sequence for the role
                 addMessage(
-                  "What would you like to say in the next step?",
+                  `I can help you create a recruiting sequence for ${roleName}. Would you like to start with an email or LinkedIn message?`,
                   "ai"
                 );
-                setLoading(false);
-              }, 1000);
-            }, 500);
-          }
-        } else if (
-          content.includes("support with our gov") ||
-          content.includes("aid program")
-        ) {
-          const activeSequence = useHelixStore.getState().getActiveSequence();
 
-          if (activeSequence) {
-            addMessage(
-              "I've added information about the government aid program. Would you like to add another step?",
-              "ai"
-            );
+                // Create a new sequence
+                if (
+                  !sequences.some(
+                    (seq) => seq.role.toLowerCase() === roleName.toLowerCase()
+                  )
+                ) {
+                  addSequence(roleName);
+                }
+              } else {
+                addMessage(
+                  "I can help you create recruiting sequences. What role are you hiring for?",
+                  "ai"
+                );
+              }
+            } else {
+              addMessage(
+                "I'm here to help you create recruiting sequences. Please tell me what role you're hiring for or ask me to create a specific type of outreach sequence.",
+                "ai"
+              );
+            }
 
-            setTimeout(() => {
-              addSequenceStep(activeSequence.id, {
-                stepType: "email",
-                subject: `Government Aid for Wildfire Recovery`,
-                body: `I work at Trajillo Tech - we release a new government aid program for homeowners affected by the wildfires. Up to $2mil in aid. Let me know if you'd like to learn more.`,
-                delay: 2,
-                order: activeSequence.steps.length,
-              });
-
-              setLoading(true);
-
-              setTimeout(() => {
-                addSequenceStep(activeSequence.id, {
-                  stepType: "email",
-                  subject: `More details: Government Aid Program`,
-                  body: `Also .. it's a fully government supported program. No cost or burden to you whatsoever.\n\nLet me know!`,
-                  delay: 3,
-                  order: activeSequence.steps.length + 1,
-                });
-
-                setLoading(false);
-              }, 1000);
-            }, 500);
-          }
-        } else if (
-          content.includes("4th step") ||
-          content.includes("reach out")
-        ) {
-          const activeSequence = useHelixStore.getState().getActiveSequence();
-
-          if (activeSequence) {
-            addMessage("I've added a follow-up step to your sequence.", "ai");
-
-            setTimeout(() => {
-              addSequenceStep(activeSequence.id, {
-                stepType: "linkedin",
-                body: `{{first_name}} - let me know if I can help! I'm here to serve as a resource.`,
-                delay: 5,
-                order: activeSequence.steps.length,
-              });
-
-              setLoading(false);
-            }, 500);
-          }
-        } else {
+            setLoading(false);
+          }, 1000);
+        } catch (error) {
+          console.error("Error processing message:", error);
           addMessage(
-            'I can help you create recruiting sequences. Try saying "Write a recruiting sequence for software engineers" or "Create a sales sequence for homeowners in LA".',
+            "Sorry, there was an error processing your request. Please try again.",
             "ai"
           );
+          toast.error(
+            "Failed to communicate with the server. Please try again."
+          );
+          setLoading(false);
         }
+      }
 
-        setLoading(false);
-      }, 1500);
+      processMessage();
     }
-  }, [messages, addMessage, setLoading, addSequence, addSequenceStep]);
+  }, [
+    messages,
+    addMessage,
+    setLoading,
+    sessionId,
+    sequences,
+    addSequence,
+    addSequenceStep,
+  ]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-background-alt p-6">
@@ -148,9 +167,6 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  3 ACTIVE TASKS
-                </span>
                 <Button
                   variant="outline"
                   size="icon"
@@ -167,7 +183,13 @@ export default function Home() {
             {/* Main Content Area */}
             <div className="flex flex-1 border-t border-border overflow-hidden">
               <ChatBar />
-              <Workspace />
+              {sequences.length > 0 ? (
+                <Workspace />
+              ) : (
+                <div className="w-3/5 h-full">
+                  <EmptyState />
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

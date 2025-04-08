@@ -1,16 +1,20 @@
 import { create } from "zustand";
 import { v4 as uuidv4 } from "uuid";
 
+export type MessageSender = "user" | "ai";
+
 export interface Message {
   id: string;
-  sender: "user" | "ai";
+  sender: MessageSender;
   content: string;
   timestamp: Date;
 }
 
+export type StepType = "email" | "linkedin";
+
 export interface SequenceStep {
   id: string;
-  stepType: "email" | "linkedin";
+  stepType: StepType;
   subject?: string;
   body: string;
   delay: number;
@@ -25,7 +29,7 @@ export interface Sequence {
 
 interface HelixState {
   // Session management
-  sessionId: string | null;
+  sessionId: string;
 
   // Chat state
   messages: Message[];
@@ -36,39 +40,46 @@ interface HelixState {
   activeSequenceId: string | null;
 
   // Actions
-  addMessage: (content: string, sender: "user" | "ai") => void;
+  addMessage: (content: string, sender: MessageSender) => void;
   setLoading: (isLoading: boolean) => void;
-  addSequence: (role: string) => void;
+
+  addSequence: (role: string) => string;
+  removeSequence: (sequenceId: string) => void;
   setActiveSequence: (sequenceId: string) => void;
-  addSequenceStep: (sequenceId: string, step: Partial<SequenceStep>) => void;
+  getActiveSequence: () => Sequence | undefined;
+
+  addSequenceStep: (sequenceId: string, step: Omit<SequenceStep, "id">) => void;
   updateSequenceStep: (
     sequenceId: string,
     stepId: string,
     updates: Partial<SequenceStep>
   ) => void;
   removeSequenceStep: (sequenceId: string, stepId: string) => void;
-  getActiveSequence: () => Sequence | undefined;
+
+  // For API integration
+  setSessionId: (sessionId: string) => void;
 }
 
-// Initialize with a default session ID and welcome message
 const useHelixStore = create<HelixState>((set, get) => ({
+  // Initialize with a unique session ID
   sessionId: uuidv4(),
 
+  // Start with a single welcome message
   messages: [
     {
       id: uuidv4(),
       sender: "ai",
       content:
-        "Hi, I'm Helix! I'll help you create recruiting outreach sequences. What role are you hiring for?",
+        "Hi, I'm Helix! I can help you create recruiting outreach sequences. What role are you hiring for?",
       timestamp: new Date(),
     },
   ],
 
   isLoading: false,
-
   sequences: [],
   activeSequenceId: null,
 
+  // Message actions
   addMessage: (content, sender) => {
     const newMessage = {
       id: uuidv4(),
@@ -83,6 +94,7 @@ const useHelixStore = create<HelixState>((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
+  // Sequence actions
   addSequence: (role) => {
     const newSequence = {
       id: uuidv4(),
@@ -96,16 +108,37 @@ const useHelixStore = create<HelixState>((set, get) => ({
     return newSequence.id;
   },
 
+  removeSequence: (sequenceId) => {
+    set((state) => {
+      const newSequences = state.sequences.filter(
+        (seq) => seq.id !== sequenceId
+      );
+      let newActiveId = state.activeSequenceId;
+
+      // Update active sequence if we removed the active one
+      if (state.activeSequenceId === sequenceId) {
+        newActiveId = newSequences.length > 0 ? newSequences[0].id : null;
+      }
+
+      return {
+        sequences: newSequences,
+        activeSequenceId: newActiveId,
+      };
+    });
+  },
+
   setActiveSequence: (sequenceId) => set({ activeSequenceId: sequenceId }),
 
+  getActiveSequence: () => {
+    const { sequences, activeSequenceId } = get();
+    return sequences.find((seq) => seq.id === activeSequenceId);
+  },
+
+  // Sequence step actions
   addSequenceStep: (sequenceId, stepData) => {
     const newStep: SequenceStep = {
       id: uuidv4(),
-      stepType: stepData.stepType || "email",
-      subject: stepData.subject || "",
-      body: stepData.body || "",
-      delay: stepData.delay || 0,
-      order: stepData.order || 0,
+      ...stepData,
     };
 
     set((state) => ({
@@ -154,10 +187,8 @@ const useHelixStore = create<HelixState>((set, get) => ({
     }));
   },
 
-  getActiveSequence: () => {
-    const { sequences, activeSequenceId } = get();
-    return sequences.find((seq) => seq.id === activeSequenceId);
-  },
+  // Session management
+  setSessionId: (sessionId) => set({ sessionId }),
 }));
 
 export default useHelixStore;
