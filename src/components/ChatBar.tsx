@@ -38,20 +38,20 @@ export function ChatBar() {
           <div
             key={message.id}
             className={cn(
-              "flex items-start gap-3 max-w-[85%]",
-              message.sender === "user" ? "ml-auto" : ""
+              "flex items-start gap-3",
+              message.sender === "user" ? "justify-end" : "justify-start"
             )}
           >
             {message.sender === "ai" && (
-              <Avatar className="size-7">
-                <AvatarImage src="/person2.jpg" alt="User" />
-                <AvatarFallback>YOU</AvatarFallback>
+              <Avatar className="size-7 flex-shrink-0">
+                <AvatarImage src="/person2.jpg" alt="AI" />
+                <AvatarFallback>AI</AvatarFallback>
               </Avatar>
             )}
 
             <Card
               className={cn(
-                "relative",
+                "max-w-[70%] min-w-[40%]",
                 message.sender === "user"
                   ? "bg-primary text-primary-foreground border-0"
                   : "bg-card text-card-foreground border-border"
@@ -66,7 +66,7 @@ export function ChatBar() {
             </Card>
 
             {message.sender === "user" && (
-              <Avatar className="size-7">
+              <Avatar className="size-7 flex-shrink-0">
                 <AvatarImage src="/person2.jpg" alt="User" />
                 <AvatarFallback>YOU</AvatarFallback>
               </Avatar>
@@ -76,11 +76,11 @@ export function ChatBar() {
 
         {isLoading && (
           <div className="flex items-start gap-3">
-            <Avatar className="size-7">
-              <AvatarImage src="/person2.jpg" alt="User" />
-              <AvatarFallback>YOU</AvatarFallback>
+            <Avatar className="size-7 flex-shrink-0">
+              <AvatarImage src="/person2.jpg" alt="AI" />
+              <AvatarFallback>AI</AvatarFallback>
             </Avatar>
-            <Card className="bg-card text-card-foreground border-border">
+            <Card className="bg-card text-card-foreground border-border max-w-[60%] min-w-[60%]">
               <CardContent className="p-3">
                 <div className="flex space-x-1">
                   <div
