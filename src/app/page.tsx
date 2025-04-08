@@ -10,6 +10,7 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { WebSocketClient } from "@/components/WebSocketClient";
+import { MemoryDebugButton } from "@/components/MemoryDebug";
 
 export default function Home() {
   const { sequences } = useHelixStore();
@@ -39,6 +40,7 @@ export default function Home() {
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
+                <MemoryDebugButton />
               </div>
             </div>
 
