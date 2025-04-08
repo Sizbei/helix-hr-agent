@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Database, XCircle } from "lucide-react";
+import { Database } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -74,9 +74,7 @@ export function MemoryDebugButton() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsDialogOpen(false)}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
+              ></Button>
             </DialogTitle>
           </DialogHeader>
 
