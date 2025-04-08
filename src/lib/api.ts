@@ -1,34 +1,16 @@
 import { Sequence, SequenceStep } from "@/lib/store";
+import axios from "axios";
 
 // Define the API base URL - this would be set in your environment config
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// API response types
-interface ChatResponse {
-  response: string;
-  sequenceUpdate?: {
-    role: string;
-    steps: Partial<SequenceStep>[];
-  };
-}
-
-interface SequencesResponse {
-  sequences: Sequence[];
-}
-
-interface SequenceUpdateResponse {
-  success: boolean;
-  updatedSequence: Sequence;
-}
-
-interface NewSequenceResponse {
-  success: boolean;
-  newSequence: Sequence;
-}
-
-interface ContextResponse {
-  message: string;
-}
+// Setup axios instance with defaults
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 // Error handler utility function
 const handleApiError = (error: any) => {
@@ -63,41 +45,20 @@ const handleApiError = (error: any) => {
 // API Service functions
 export const ApiService = {
   // Chat endpoint to process user messages
-  async sendMessage(message: string, sessionId: string): Promise<ChatResponse> {
+  async sendMessage(message: string, sessionId: string): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message, sessionId }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      const response = await api.post("/chat", { message, sessionId });
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
   },
 
   // Get all sequences for a session
-  async getSequences(sessionId: string): Promise<SequencesResponse> {
+  async getSequences(sessionId: string): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sequences/${sessionId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      const response = await api.get(`/sequence/all/${sessionId}`);
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
@@ -109,49 +70,28 @@ export const ApiService = {
     sequenceId: string,
     stepId: string,
     updates: Partial<SequenceStep>
-  ): Promise<SequenceUpdateResponse> {
+  ): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sequence/${sessionId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await api.put(`/sequence/${sessionId}/step/${stepId}`, {
+        updates: {
+          step_type: updates.stepType,
+          subject: updates.subject,
+          body: updates.body,
+          delay: updates.delay,
+          order: updates.order,
         },
-        body: JSON.stringify({
-          role: sequenceId,
-          stepId,
-          updates,
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
   },
 
   // Create a new sequence
-  async createSequence(
-    sessionId: string,
-    role: string
-  ): Promise<NewSequenceResponse> {
+  async createSequence(sessionId: string, role: string): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sequence/new`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionId, role }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      const response = await api.post(`/sequence/new`, { sessionId, role });
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
@@ -161,28 +101,20 @@ export const ApiService = {
   async addSequenceStep(
     sessionId: string,
     sequenceId: string,
-    stepData: Omit<SequenceStep, "id">
-  ): Promise<SequenceUpdateResponse> {
+    stepData: any
+  ): Promise<any> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/sequence/${sessionId}/step`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            role: sequenceId,
-            step: stepData,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      const response = await api.post(`/sequence/${sessionId}/step`, {
+        role: sequenceId,
+        step_data: {
+          step_type: stepData.stepType,
+          subject: stepData.subject,
+          body: stepData.body,
+          delay: stepData.delay,
+          order: stepData.order,
+        },
+      });
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
@@ -193,76 +125,133 @@ export const ApiService = {
     sessionId: string,
     sequenceId: string,
     stepId: string
-  ): Promise<SequenceUpdateResponse> {
+  ): Promise<any> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/sequence/${sessionId}/step/${stepId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ role: sequenceId }),
-        }
+      const response = await api.delete(
+        `/sequence/${sessionId}/step/${stepId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
   },
 
   // Delete an entire sequence
-  async deleteSequence(
-    sessionId: string,
-    sequenceId: string
-  ): Promise<{ success: boolean }> {
+  async deleteSequence(sessionId: string, sequenceId: string): Promise<any> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/sequence/${sessionId}/${sequenceId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await api.delete(
+        `/sequence/${sessionId}/role/${sequenceId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return await response.json();
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }
   },
 
   // Initialize a context for a session
-  async initializeContext(
-    sessionId: string,
-    context: string
-  ): Promise<ContextResponse> {
+  async initializeContext(sessionId: string, context: string): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/context/${sessionId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          context,
-        }),
+      const response = await api.post(`/context/${sessionId}`, {
+        context,
       });
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
+  // SESSION MANAGEMENT API ENDPOINTS
 
-      return await response.json();
+  // Create or restore a session
+  async createOrRestoreSession(
+    sessionId?: string,
+    userIdentifier?: string
+  ): Promise<any> {
+    try {
+      const response = await api.post("/user/session", {
+        sessionId,
+        userIdentifier,
+      });
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Get all sessions for a user
+  async getUserSessions(userIdentifier: string): Promise<any> {
+    try {
+      const response = await api.get(
+        `/user/sessions/${encodeURIComponent(userIdentifier)}`
+      );
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Delete/deactivate a session
+  async deleteSession(sessionId: string): Promise<any> {
+    try {
+      const response = await api.delete(`/user/session/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Export session data
+  async exportSessionData(sessionId: string): Promise<any> {
+    try {
+      const response = await api.get(`/user/session/${sessionId}/export`);
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Import session data
+  async importSessionData(sessionId: string, importData: any): Promise<any> {
+    try {
+      const response = await api.post("/user/session/import", {
+        sessionId,
+        importData,
+      });
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Reorder sequence steps
+  async reorderSequenceSteps(
+    sessionId: string,
+    role: string,
+    stepOrder: string[]
+  ): Promise<any> {
+    try {
+      const response = await api.post(`/sequence/${sessionId}/reorder`, {
+        role,
+        stepOrder,
+      });
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Clone a sequence to a new role
+  async cloneSequence(
+    sessionId: string,
+    sourceRole: string,
+    newRole: string
+  ): Promise<any> {
+    try {
+      const response = await api.post(`/sequence/${sessionId}/clone`, {
+        sourceRole,
+        newRole,
+      });
+      return response.data;
     } catch (error) {
       throw handleApiError(error);
     }

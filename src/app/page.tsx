@@ -12,10 +12,38 @@ import { EmptyState } from "@/components/EmptyState";
 import { WebSocketClient } from "@/components/WebSocketClient";
 import { MemoryDebugButton } from "@/components/MemoryDebug";
 import { ContextInitModal } from "@/components/ContextModal";
+import { UserSettings } from "@/components/UserSettings";
+import { useSession } from "@/lib/session";
 
 export default function Home() {
   const { sequences } = useHelixStore();
   const { theme, setTheme } = useTheme();
+  const { isLoading } = useSession();
+
+  // Show loading state while initializing session
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background-alt">
+        <div className="text-center">
+          <div className="flex space-x-2 justify-center mb-4">
+            <div
+              className="w-3 h-3 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            ></div>
+            <div
+              className="w-3 h-3 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            ></div>
+            <div
+              className="w-3 h-3 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            ></div>
+          </div>
+          <p className="text-muted-foreground">Loading your workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-background-alt p-6">
@@ -31,6 +59,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <UserSettings />
                 <ContextInitModal />
                 <Button
                   variant="outline"
@@ -42,7 +71,9 @@ export default function Home() {
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
-                <MemoryDebugButton />
+                {process.env.NODE_ENV === "development" && (
+                  <MemoryDebugButton />
+                )}
               </div>
             </div>
 
