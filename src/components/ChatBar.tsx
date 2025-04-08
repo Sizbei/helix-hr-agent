@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,14 @@ import { ChatApiService } from "@/lib/chatapi";
 export function ChatBar() {
   const [inputMessage, setInputMessage] = useState("");
   const { messages, addMessage, isLoading } = useHelixStore();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Add this to scroll to the bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
@@ -110,6 +118,7 @@ export function ChatBar() {
             </Card>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="p-4 border-t border-border bg-background">
