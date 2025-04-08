@@ -192,29 +192,139 @@ export const ApiService = {
   },
 
   // Recover a specific session by email and sessionId
-  async recoverSession(email: string, sessionId: string): Promise<any> {
+  async recoverSession(email: string, sessionId?: string): Promise<any> {
+    console.log(
+      `[API] recoverSession - Email: ${email}, Session ID: ${
+        sessionId || "not specified"
+      }`
+    );
     try {
-      const response = await api.post("/user/recover", {
-        email,
-        sessionId,
-      });
+      const requestData: any = { email };
+
+      // If sessionId is provided, include it in the request
+      if (sessionId) {
+        requestData.sessionId = sessionId;
+      }
+
+      const response = await api.post("/user/recover", requestData);
+      console.log("[API] recoverSession response:", response.data);
+
+      // If recovery was successful and found is true, update local session info
+      if (response.data && response.data.found) {
+        console.log(
+          "[API] Recovery successful, updating local session to:",
+          response.data.sessionId
+        );
+
+        // Store the recovered session ID in localStorage
+        localStorage.setItem("sessionId", response.data.sessionId);
+
+        // Trigger a page refresh to load the recovered session data
+        window.location.reload();
+      }
+
       return response.data;
     } catch (error) {
+      console.error("[API] recoverSession error:", error);
       throw handleApiError(error);
     }
   },
 
   // Get all sessions for a user
-  async getUserSessions(userIdentifier: string): Promise<any> {
+  // Get all sessions for a user by email
+  async getUserSessions(email: string): Promise<any> {
+    console.log(`[API] getUserSessions - Email: ${email}`);
     try {
-      const response = await api.get(
-        `/user/sessions/${encodeURIComponent(userIdentifier)}`
-      );
+      // Use POST method with email in the request body
+      const response = await api.post("/user/sessions/email", {
+        email: email,
+      });
 
-      // Return the entire response to handle different structures
-      return response.data;
+      console.log("[API] getUserSessions response data:", response.data);
+
+      // Check different possible response formats
+      if (response.data && response.data.success) {
+        // Format 1: { success: true, data: { sessions: [...] } }
+        if (response.data.data && Array.isArray(response.data.data.sessions)) {
+          console.log(
+            `[API] Found ${response.data.data.sessions.length} sessions in response.data.data.sessions`
+          );
+          return response.data.data.sessions;
+        }
+
+        // Format 2: { success: true, data: { sessions: [...], sessionCount: X } }
+        if (response.data.data && response.data.data.sessions) {
+          console.log(
+            `[API] Found ${response.data.data.sessions.length} sessions in response.data.data.sessions`
+          );
+          return response.data.data.sessions;
+        }
+
+        // Format 3: Array is directly in the root data object
+        if (Array.isArray(response.data.data)) {
+          console.log(
+            `[API] Found ${response.data.data.length} sessions in response.data.data array`
+          );
+          return response.data.data;
+        }
+      }
+
+      // Fallback - check if response.data itself is an array
+      if (Array.isArray(response.data)) {
+        console.log(
+          `[API] Found ${response.data.length} sessions in direct response.data array`
+        );
+        return response.data;
+      }
+
+      // Deeper inspection of the response structure
+      console.warn(
+        "[API] getUserSessions: Unexpected response format",
+        response.data
+      );
+      console.log("[API] Response keys:", Object.keys(response.data || {}));
+
+      if (response.data && typeof response.data === "object") {
+        Object.keys(response.data).forEach((key) => {
+          console.log(
+            `[API] response.data.${key} type:`,
+            typeof response.data[key],
+            Array.isArray(response.data[key])
+              ? `(array of ${response.data[key].length})`
+              : ""
+          );
+        });
+      }
+
+      // Last resort - try to find any array in the response
+      for (const key in response.data) {
+        if (Array.isArray(response.data[key])) {
+          console.log(
+            `[API] Found array in response.data.${key} with ${response.data[key].length} items`
+          );
+          return response.data[key];
+        }
+
+        // Check one level deeper
+        if (response.data[key] && typeof response.data[key] === "object") {
+          for (const subKey in response.data[key]) {
+            if (Array.isArray(response.data[key][subKey])) {
+              console.log(
+                `[API] Found array in response.data.${key}.${subKey} with ${response.data[key][subKey].length} items`
+              );
+              return response.data[key][subKey];
+            }
+          }
+        }
+      }
+
+      // If we couldn't find anything, return empty array
+      console.warn(
+        "[API] getUserSessions: Could not find sessions array in response"
+      );
+      return [];
     } catch (error) {
-      console.error("Error fetching user sessions:", error);
+      console.error("[API] getUserSessions error:", error);
       // Return empty array instead of throwing, which is safer for UI handling
       return [];
     }

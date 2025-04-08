@@ -54,7 +54,8 @@ export function useSession(): UseSessionReturn {
   const registerEmail = useCallback(
     async (email: string): Promise<boolean> => {
       try {
-        const response = await fetch(`${API_URL}/session/register`, {
+        // Updated to use the /user/register endpoint
+        const response = await fetch(`${API_URL}/user/register`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -66,14 +67,21 @@ export function useSession(): UseSessionReturn {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to register email");
+          const errorData = await response.json();
+          console.error("Error registering email:", errorData);
+          throw new Error(errorData.message || "Failed to register email");
         }
 
-        // Store email in local storage
-        localStorage.setItem("userEmail", email);
-        setUserIdentifier(email);
+        const data = await response.json();
 
-        return true;
+        if (data.success) {
+          // Store email in local storage
+          localStorage.setItem("userEmail", email);
+          setUserIdentifier(email);
+          return true;
+        } else {
+          throw new Error(data.message || "Failed to register email");
+        }
       } catch (error) {
         console.error("Error registering email:", error);
         return false;
@@ -85,8 +93,9 @@ export function useSession(): UseSessionReturn {
   // Get user sessions by email
   const getUserSessions = useCallback(async (email: string): Promise<any[]> => {
     try {
+      // Updated to use the /user/sessions/{email} endpoint
       const response = await fetch(
-        `${API_URL}/session/user/${encodeURIComponent(email)}`,
+        `${API_URL}/user/sessions/${encodeURIComponent(email)}`,
         {
           method: "GET",
           headers: {
@@ -96,16 +105,57 @@ export function useSession(): UseSessionReturn {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to get user sessions");
+        const errorData = await response.json();
+        console.error("Error getting user sessions:", errorData);
+        throw new Error(errorData.message || "Failed to get user sessions");
       }
 
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+
+      if (data.success && data.data && Array.isArray(data.data.sessions)) {
+        return data.data.sessions;
+      } else {
+        return [];
+      }
     } catch (error) {
       console.error("Error getting user sessions:", error);
       return [];
     }
   }, []);
+
+  // Alternative method to get sessions using a POST request
+  const getUserSessionsPost = useCallback(
+    async (email: string): Promise<any[]> => {
+      try {
+        // Some APIs might use POST instead of GET for this operation
+        const response = await fetch(`${API_URL}/user/sessions/email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Error getting user sessions:", errorData);
+          throw new Error(errorData.message || "Failed to get user sessions");
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.data && Array.isArray(data.data.sessions)) {
+          return data.data.sessions;
+        } else {
+          return [];
+        }
+      } catch (error) {
+        console.error("Error getting user sessions:", error);
+        return [];
+      }
+    },
+    []
+  );
 
   // Recover a specific session
   const recoverSession = useCallback(
@@ -113,8 +163,13 @@ export function useSession(): UseSessionReturn {
       try {
         // First, verify the session exists and belongs to this email
         const sessions = await getUserSessions(email);
-        const sessionExists = sessions.some(
-          (session) => session.session_id === targetSessionId
+
+        // If the first method fails, try the POST method
+        const allSessions =
+          sessions.length > 0 ? sessions : await getUserSessionsPost(email);
+
+        const sessionExists = allSessions.some(
+          (session) => session.sessionId === targetSessionId
         );
 
         if (!sessionExists) {
@@ -140,24 +195,36 @@ export function useSession(): UseSessionReturn {
         return false;
       }
     },
-    [getUserSessions]
+    [getUserSessions, getUserSessionsPost]
   );
 
   // Export session data
   const exportSession = useCallback(async (): Promise<any> => {
     try {
-      const response = await fetch(`${API_URL}/session/export/${sessionId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Updated to use the /user/session/{sessionId}/export endpoint
+      const response = await fetch(
+        `${API_URL}/user/session/${sessionId}/export`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error("Failed to export session data");
+        const errorData = await response.json();
+        console.error("Error exporting session data:", errorData);
+        throw new Error(errorData.message || "Failed to export session data");
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      if (data.success) {
+        return data.data;
+      } else {
+        throw new Error(data.message || "Failed to export session data");
+      }
     } catch (error) {
       console.error("Error exporting session:", error);
       throw error;
@@ -165,42 +232,49 @@ export function useSession(): UseSessionReturn {
   }, [sessionId]);
 
   // Import session data
-  const importSession = useCallback(async (data: any): Promise<boolean> => {
-    try {
-      const response = await fetch(`${API_URL}/session/import`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+  const importSession = useCallback(
+    async (importData: any): Promise<boolean> => {
+      try {
+        // Updated to use the /user/session/import endpoint
+        const response = await fetch(`${API_URL}/user/session/import`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sessionId,
+            importData,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to import session data");
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Error importing session data:", errorData);
+          throw new Error(errorData.message || "Failed to import session data");
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Reload the page to refresh data with the updated session
+          window.location.reload();
+          return true;
+        } else {
+          throw new Error(data.message || "Failed to import session data");
+        }
+      } catch (error) {
+        console.error("Error importing session:", error);
+        return false;
       }
-
-      const result = await response.json();
-
-      if (result.sessionId) {
-        // Switch to the imported session
-        setSessionId(result.sessionId);
-        localStorage.setItem("sessionId", result.sessionId);
-
-        // Reload the page to refresh data with the new session
-        window.location.reload();
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error importing session:", error);
-      return false;
-    }
-  }, []);
+    },
+    [sessionId]
+  );
 
   // Delete current session
   const deleteSession = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_URL}/session/${sessionId}`, {
+      // Updated to use the /user/session/{sessionId} endpoint
+      const response = await fetch(`${API_URL}/user/session/${sessionId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -208,22 +282,30 @@ export function useSession(): UseSessionReturn {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete session");
+        const errorData = await response.json();
+        console.error("Error deleting session:", errorData);
+        throw new Error(errorData.message || "Failed to delete session");
       }
 
-      // Generate a new session ID
-      const newSessionId = generateSessionId();
-      setSessionId(newSessionId);
-      localStorage.setItem("sessionId", newSessionId);
+      const data = await response.json();
 
-      // Clear user identifier
-      setUserIdentifier(null);
-      localStorage.removeItem("userEmail");
+      if (data.success) {
+        // Generate a new session ID
+        const newSessionId = generateSessionId();
+        setSessionId(newSessionId);
+        localStorage.setItem("sessionId", newSessionId);
 
-      // Reload the page to refresh data with the new session
-      window.location.reload();
+        // Clear user identifier
+        setUserIdentifier(null);
+        localStorage.removeItem("userEmail");
 
-      return true;
+        // Reload the page to refresh data with the new session
+        window.location.reload();
+
+        return true;
+      } else {
+        throw new Error(data.message || "Failed to delete session");
+      }
     } catch (error) {
       console.error("Error deleting session:", error);
       return false;

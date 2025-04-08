@@ -388,9 +388,14 @@ export function UserSettings() {
 
               {userSessions.length > 0 ? (
                 <div className="space-y-3">
-                  {userSessions.map((session) => (
+                  {/* Debug info */}
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Found {userSessions.length} sessions
+                  </div>
+
+                  {userSessions.map((session, index) => (
                     <Card
-                      key={session.sessionId}
+                      key={session.sessionId || `session-${index}`}
                       className={
                         session.sessionId === sessionId ? "border-primary" : ""
                       }
@@ -403,12 +408,12 @@ export function UserSettings() {
                               {session.sessionId === sessionId
                                 ? "Current Session"
                                 : `Session from ${formatSessionDate(
-                                    session.lastActivity
+                                    session.lastActivity || session.created
                                   )}`}
                             </span>
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            {session.sequenceCount} sequences
+                            {session.sequenceCount || "0"} sequences
                           </span>
                         </CardTitle>
                       </CardHeader>
