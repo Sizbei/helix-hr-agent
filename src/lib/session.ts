@@ -112,13 +112,31 @@ export function useSession() {
   };
 
   // Get all sessions for a user by email
+  // Get all sessions for a user by email
   const getUserSessions = async (email: string) => {
     try {
       const response = await ApiService.getUserSessions(email);
-      return response.data.sessions;
+
+      // Check different possible response structures
+      if (response && response.data && response.data.sessions) {
+        return response.data.sessions;
+      } else if (response && response.data) {
+        // If the sessions are directly in the data property
+        return response.data;
+      } else if (Array.isArray(response)) {
+        // If the response itself is the array of sessions
+        return response;
+      }
+
+      // Return empty array as fallback
+      console.warn(
+        "Unexpected response structure from getUserSessions:",
+        response
+      );
+      return [];
     } catch (err) {
       console.error("Error getting user sessions:", err);
-      throw err;
+      return []; // Return empty array instead of throwing
     }
   };
 

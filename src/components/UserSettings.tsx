@@ -88,9 +88,18 @@ export function UserSettings() {
     try {
       setIsLoading(true);
       const sessions = await getUserSessions(userEmail);
-      setUserSessions(sessions || []);
+
+      // Ensure sessions is an array
+      if (Array.isArray(sessions)) {
+        setUserSessions(sessions);
+      } else {
+        console.warn("Expected array of sessions but got:", sessions);
+        setUserSessions([]);
+      }
     } catch (error) {
       console.error("Error loading user sessions:", error);
+      toast.error("Failed to load your sessions");
+      setUserSessions([]);
     } finally {
       setIsLoading(false);
     }
@@ -107,16 +116,19 @@ export function UserSettings() {
       setIsLoading(true);
       const sessions = await getUserSessions(recoveryEmail);
 
-      if (sessions && sessions.length > 0) {
+      // Ensure sessions is an array
+      if (Array.isArray(sessions) && sessions.length > 0) {
         setUserSessions(sessions);
         setActiveTab("sessions");
         toast.success("Found sessions associated with your email");
       } else {
         toast.info("No sessions found for this email");
+        setUserSessions([]);
       }
     } catch (error) {
       console.error("Error recovering sessions:", error);
       toast.error("Failed to recover sessions");
+      setUserSessions([]);
     } finally {
       setIsLoading(false);
     }

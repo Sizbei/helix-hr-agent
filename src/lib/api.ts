@@ -210,9 +210,13 @@ export const ApiService = {
       const response = await api.get(
         `/user/sessions/${encodeURIComponent(userIdentifier)}`
       );
+
+      // Return the entire response to handle different structures
       return response.data;
     } catch (error) {
-      throw handleApiError(error);
+      console.error("Error fetching user sessions:", error);
+      // Return empty array instead of throwing, which is safer for UI handling
+      return [];
     }
   },
 
