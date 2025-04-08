@@ -5,7 +5,7 @@ import { Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import useHelixStore from "@/lib/store";
 import { format } from "date-fns";
@@ -43,10 +43,9 @@ export function ChatBar() {
             )}
           >
             {message.sender === "ai" && (
-              <Avatar className="h-8 w-8 bg-primary">
-                <span className="text-xs font-medium text-primary-foreground">
-                  AI
-                </span>
+              <Avatar className="size-7">
+                <AvatarImage src="/person2.jpg" alt="User" />
+                <AvatarFallback>YOU</AvatarFallback>
               </Avatar>
             )}
 
@@ -67,10 +66,9 @@ export function ChatBar() {
             </Card>
 
             {message.sender === "user" && (
-              <Avatar className="h-8 w-8 bg-muted">
-                <span className="text-xs font-medium text-muted-foreground">
-                  YOU
-                </span>
+              <Avatar className="size-7">
+                <AvatarImage src="/person2.jpg" alt="User" />
+                <AvatarFallback>YOU</AvatarFallback>
               </Avatar>
             )}
           </div>
@@ -78,10 +76,9 @@ export function ChatBar() {
 
         {isLoading && (
           <div className="flex items-start gap-3">
-            <Avatar className="h-8 w-8 bg-primary">
-              <span className="text-xs font-medium text-primary-foreground">
-                AI
-              </span>
+            <Avatar className="size-7">
+              <AvatarImage src="/person2.jpg" alt="User" />
+              <AvatarFallback>YOU</AvatarFallback>
             </Avatar>
             <Card className="bg-card text-card-foreground border-border">
               <CardContent className="p-3">

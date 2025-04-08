@@ -80,7 +80,7 @@ export function Workspace() {
         {!isCreatingSequence && (
           <Button
             onClick={() => setIsCreatingSequence(true)}
-            className="bg-secondary hover:bg-secondary/90"
+            className="bg-primary hover:bg-primary/90"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             New Sequence
@@ -230,7 +230,7 @@ export function Workspace() {
                       setActiveSequence(sequence.id);
                       setIsAddingStep(true);
                     }}
-                    className="bg-secondary hover:bg-secondary/90"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     <PlusCircle className="h-4 w-4 mr-2" />
                     Add Another Step
