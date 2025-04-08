@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SequenceStep as StepType } from "@/lib/store";
 import useHelixStore from "@/lib/store";
+import { ApiService } from "@/lib/api";
+import { toast } from "sonner";
 
 interface SequenceStepProps {
   step: StepType;
@@ -28,12 +30,46 @@ export function SequenceStep({
 }: SequenceStepProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedStep, setEditedStep] = useState<StepType>(step);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { updateSequenceStep, removeSequenceStep } = useHelixStore();
+  const { updateSequenceStep, removeSequenceStep, sessionId } = useHelixStore();
 
-  const handleSaveChanges = () => {
-    updateSequenceStep(sequenceId, step.id, editedStep);
-    setIsEditing(false);
+  const handleSaveChanges = async () => {
+    try {
+      setIsSaving(true);
+
+      // Create an object with the correct property names for the API
+      const updates = {
+        stepType: editedStep.stepType,
+        subject: editedStep.subject,
+        body: editedStep.body,
+        delay: editedStep.delay,
+        order: editedStep.order,
+      };
+
+      // Call API to update step
+      await ApiService.updateSequenceStep(
+        sessionId,
+        sequenceId,
+        step.id,
+        updates
+      );
+
+      // Update local state
+      updateSequenceStep(sequenceId, step.id, editedStep);
+      setIsEditing(false);
+      toast.success("Step updated successfully");
+    } catch (error) {
+      console.error("Error updating step:", error);
+      toast.error("Failed to update step");
+
+      // Still update local state for development if API fails
+      updateSequenceStep(sequenceId, step.id, editedStep);
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -41,9 +77,26 @@ export function SequenceStep({
     setIsEditing(false);
   };
 
-  const handleRemoveStep = () => {
+  const handleRemoveStep = async () => {
     if (confirm("Are you sure you want to remove this step?")) {
-      removeSequenceStep(sequenceId, step.id);
+      try {
+        setIsDeleting(true);
+
+        // Call API to delete step
+        await ApiService.deleteSequenceStep(sessionId, sequenceId, step.id);
+
+        // Update local state
+        removeSequenceStep(sequenceId, step.id);
+        toast.success("Step removed successfully");
+      } catch (error) {
+        console.error("Error removing step:", error);
+        toast.error("Failed to remove step");
+
+        // Still update local state for development if API fails
+        removeSequenceStep(sequenceId, step.id);
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -140,16 +193,28 @@ export function SequenceStep({
       <CardFooter className="px-4 py-3 border-t bg-muted flex justify-end space-x-2">
         {isEditing ? (
           <>
-            <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelEdit}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button
               size="sm"
               onClick={handleSaveChanges}
+              disabled={isSaving}
               className="bg-primary hover:bg-primary/90"
             >
-              <Save className="h-4 w-4 mr-1" />
-              Save Changes
+              {isSaving ? (
+                "Saving..."
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-1" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </>
         ) : (
@@ -158,10 +223,17 @@ export function SequenceStep({
               variant="outline"
               size="sm"
               onClick={handleRemoveStep}
+              disabled={isDeleting}
               className="text-destructive hover:text-destructive/90"
             >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Remove
+              {isDeleting ? (
+                "Removing..."
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Remove
+                </>
+              )}
             </Button>
             <Button
               variant="outline"

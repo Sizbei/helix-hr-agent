@@ -9,15 +9,23 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import useHelixStore from "@/lib/store";
 import { format } from "date-fns";
+import { ChatApiService } from "@/lib/chatapi";
 
 export function ChatBar() {
   const [inputMessage, setInputMessage] = useState("");
   const { messages, addMessage, isLoading } = useHelixStore();
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputMessage.trim()) {
+      // Add user message to UI immediately
       addMessage(inputMessage.trim(), "user");
+
+      // Save message before clearing input
+      const messageToSend = inputMessage.trim();
       setInputMessage("");
+
+      // Process with the API service
+      await ChatApiService.processMessage(messageToSend);
     }
   };
 
@@ -112,6 +120,7 @@ export function ChatBar() {
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             className="flex-1 bg-input border-input-border text-input-foreground focus-visible:ring-primary"
+            disabled={isLoading}
           />
           <Button
             onClick={handleSendMessage}

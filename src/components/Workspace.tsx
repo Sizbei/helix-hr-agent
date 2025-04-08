@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { SequenceStep as SequenceStepComponent } from "@/components/SequenceStep";
 import useHelixStore from "@/lib/store";
 import { StepType } from "@/lib/store";
+import { ApiService } from "@/lib/api";
+import { toast } from "sonner";
 
 export function Workspace() {
   const {
@@ -16,38 +18,109 @@ export function Workspace() {
     setActiveSequence,
     addSequence,
     addSequenceStep,
+    sessionId,
   } = useHelixStore();
 
   const [isCreatingSequence, setIsCreatingSequence] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
   const [isAddingStep, setIsAddingStep] = useState(false);
   const [newStepType, setNewStepType] = useState<StepType>("email");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddSequence = () => {
+  const handleAddSequence = async () => {
     if (newRoleName.trim()) {
-      addSequence(newRoleName.trim());
-      setNewRoleName("");
-      setIsCreatingSequence(false);
+      try {
+        setIsSubmitting(true);
+
+        // Call API to create sequence
+        await ApiService.createSequence(sessionId, newRoleName.trim());
+
+        // Update local state
+        addSequence(newRoleName.trim());
+        setNewRoleName("");
+        setIsCreatingSequence(false);
+        toast.success(`Sequence created for ${newRoleName.trim()}`);
+      } catch (error) {
+        console.error("Error creating sequence:", error);
+        toast.error("Failed to create sequence");
+
+        // Still update local state for development if API fails
+        addSequence(newRoleName.trim());
+        setNewRoleName("");
+        setIsCreatingSequence(false);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  const handleAddStep = () => {
+  const handleAddStep = async () => {
     if (activeSequenceId) {
       const activeSequence = sequences.find(
         (seq) => seq.id === activeSequenceId
       );
+
       if (activeSequence) {
-        addSequenceStep(activeSequenceId, {
-          stepType: newStepType,
-          subject: newStepType === "email" ? "Subject line" : undefined,
-          body: "",
-          delay: activeSequence.steps.length > 0 ? 1 : 0,
-          order: activeSequence.steps.length,
-        });
-        setIsAddingStep(false);
+        try {
+          setIsSubmitting(true);
+
+          const stepData = {
+            stepType: newStepType,
+            subject: newStepType === "email" ? "Subject line" : undefined,
+            body: "",
+            delay: activeSequence.steps.length > 0 ? 1 : 0,
+            order: activeSequence.steps.length,
+          };
+
+          // Call API to add step - use the proper property names for the API
+          await ApiService.addSequenceStep(sessionId, activeSequenceId, {
+            stepType: stepData.stepType,
+            subject: stepData.subject,
+            body: stepData.body,
+            delay: stepData.delay,
+            order: stepData.order,
+          });
+
+          // Update local state
+          addSequenceStep(activeSequenceId, stepData);
+          setIsAddingStep(false);
+          toast.success("Step added successfully");
+        } catch (error) {
+          console.error("Error adding step:", error);
+          toast.error("Failed to add step");
+
+          // Still update local state for development if API fails
+          addSequenceStep(activeSequenceId, {
+            stepType: newStepType,
+            subject: newStepType === "email" ? "Subject line" : undefined,
+            body: "",
+            delay: activeSequence.steps.length > 0 ? 1 : 0,
+            order: activeSequence.steps.length,
+          });
+          setIsAddingStep(false);
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     }
   };
+
+  // Comment out or remove the unused function
+  /*
+  const handleDeleteSequence = async (sequenceId: string) => {
+    try {
+      await ApiService.deleteSequence(sessionId, sequenceId);
+      removeSequence(sequenceId);
+      toast.success("Sequence deleted successfully");
+    } catch (error) {
+      console.error("Error deleting sequence:", error);
+      toast.error("Failed to delete sequence");
+      
+      // Still update local state for development if API fails
+      removeSequence(sequenceId);
+    }
+  };
+  */
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newRoleName.trim()) {
@@ -55,8 +128,7 @@ export function Workspace() {
     }
   };
 
-  // If there are no sequences, we shouldn't render this component,
-  // EmptyState should be shown instead, but we'll add a fallback anyway
+  // Fallback if no sequences are available
   if (sequences.length === 0) {
     return (
       <div className="w-3/5 h-full flex flex-col items-center justify-center overflow-y-auto">
@@ -100,12 +172,14 @@ export function Workspace() {
               onChange={(e) => setNewRoleName(e.target.value)}
               onKeyPress={handleKeyPress}
               className="flex-1 bg-input border-input-border text-input-foreground"
+              disabled={isSubmitting}
             />
             <Button
               onClick={handleAddSequence}
               className="bg-secondary hover:bg-secondary/90"
+              disabled={isSubmitting}
             >
-              Create
+              {isSubmitting ? "Creating..." : "Create"}
             </Button>
             <Button
               variant="outline"
@@ -114,6 +188,7 @@ export function Workspace() {
                 setNewRoleName("");
               }}
               className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
@@ -158,6 +233,7 @@ export function Workspace() {
                       variant={newStepType === "email" ? "default" : "outline"}
                       className={newStepType === "email" ? "bg-primary" : ""}
                       onClick={() => setNewStepType("email")}
+                      disabled={isSubmitting}
                     >
                       <Mail className="h-4 w-4 mr-2" />
                       Email
@@ -169,6 +245,7 @@ export function Workspace() {
                       }
                       className={newStepType === "linkedin" ? "bg-primary" : ""}
                       onClick={() => setNewStepType("linkedin")}
+                      disabled={isSubmitting}
                     >
                       <svg
                         className="h-4 w-4 mr-2"
@@ -184,13 +261,15 @@ export function Workspace() {
                     <Button
                       onClick={handleAddStep}
                       className="bg-primary hover:bg-primary/90"
+                      disabled={isSubmitting}
                     >
-                      Add Step
+                      {isSubmitting ? "Adding..." : "Add Step"}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => setIsAddingStep(false)}
                       className="border-border"
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </Button>

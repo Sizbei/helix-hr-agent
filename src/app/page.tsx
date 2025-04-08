@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ChatBar } from "@/components/ChatBar";
 import { Workspace } from "@/components/Workspace";
@@ -10,148 +9,11 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
-// import { ApiService } from "@/lib/api";
-import { toast } from "sonner";
+import { WebSocketClient } from "@/components/WebSocketClient";
 
 export default function Home() {
-  const {
-    messages,
-    sequences,
-    addMessage,
-    setLoading,
-    sessionId,
-    addSequence,
-    addSequenceStep,
-  } = useHelixStore();
+  const { sequences } = useHelixStore();
   const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-
-    if (lastMessage && lastMessage.sender === "user") {
-      setLoading(true);
-
-      async function processMessage() {
-        try {
-          // This would be the real API call in production
-          // Uncomment when backend is ready
-          /*
-          const data = await ApiService.sendMessage(
-            lastMessage.content,
-            sessionId
-          );
-          
-          if (data.response) {
-            addMessage(data.response, "ai");
-          }
-          
-          // Handle sequence updates if they exist
-          if (data.sequenceUpdate) {
-            const { role, steps } = data.sequenceUpdate;
-            
-            // Check if this sequence already exists
-            const existingSequence = sequences.find(seq => seq.role.toLowerCase() === role.toLowerCase());
-            
-            if (existingSequence) {
-              // Add steps to existing sequence
-              steps.forEach(step => {
-                if (step) {
-                  addSequenceStep(existingSequence.id, {
-                    stepType: step.stepType || "email",
-                    subject: step.subject,
-                    body: step.body || "",
-                    delay: step.delay || 0,
-                    order: step.order || existingSequence.steps.length
-                  });
-                }
-              });
-            } else {
-              // Create a new sequence with these steps
-              const newSequenceId = addSequence(role);
-              
-              steps.forEach(step => {
-                if (step) {
-                  addSequenceStep(newSequenceId, {
-                    stepType: step.stepType || "email",
-                    subject: step.subject,
-                    body: step.body || "",
-                    delay: step.delay || 0,
-                    order: step.order || 0
-                  });
-                }
-              });
-            }
-          }
-          */
-
-          // For development: simulate API response
-          // Remove this when backend is ready
-          setTimeout(() => {
-            const content = lastMessage.content.toLowerCase();
-
-            if (
-              content.includes("recruiting") ||
-              content.includes("hire") ||
-              content.includes("sequence")
-            ) {
-              // Try to extract a role from the message
-              const roleMatcher = content.match(/for\s+([a-z\s]+)/i);
-              const roleName = roleMatcher ? roleMatcher[1].trim() : null;
-
-              if (roleName) {
-                // Simulate creating a sequence for the role
-                addMessage(
-                  `I can help you create a recruiting sequence for ${roleName}. Would you like to start with an email or LinkedIn message?`,
-                  "ai"
-                );
-
-                // Create a new sequence
-                if (
-                  !sequences.some(
-                    (seq) => seq.role.toLowerCase() === roleName.toLowerCase()
-                  )
-                ) {
-                  addSequence(roleName);
-                }
-              } else {
-                addMessage(
-                  "I can help you create recruiting sequences. What role are you hiring for?",
-                  "ai"
-                );
-              }
-            } else {
-              addMessage(
-                "I'm here to help you create recruiting sequences. Please tell me what role you're hiring for or ask me to create a specific type of outreach sequence.",
-                "ai"
-              );
-            }
-
-            setLoading(false);
-          }, 1000);
-        } catch (error) {
-          console.error("Error processing message:", error);
-          addMessage(
-            "Sorry, there was an error processing your request. Please try again.",
-            "ai"
-          );
-          toast.error(
-            "Failed to communicate with the server. Please try again."
-          );
-          setLoading(false);
-        }
-      }
-
-      processMessage();
-    }
-  }, [
-    messages,
-    addMessage,
-    setLoading,
-    sessionId,
-    sequences,
-    addSequence,
-    addSequenceStep,
-  ]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-background-alt p-6">
@@ -195,6 +57,7 @@ export default function Home() {
         </CardContent>
       </Card>
       <Toaster />
+      <WebSocketClient />
     </div>
   );
 }

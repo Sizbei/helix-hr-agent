@@ -6,17 +6,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import useHelixStore from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
+import { ApiService } from "@/lib/api";
+import { toast } from "sonner";
 
 export function EmptyState() {
   const [isCreating, setIsCreating] = useState(false);
   const [roleName, setRoleName] = useState("");
-  const { addSequence } = useHelixStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { addSequence, sessionId } = useHelixStore();
 
-  const handleCreateSequence = () => {
+  const handleCreateSequence = async () => {
     if (roleName.trim()) {
-      addSequence(roleName);
-      setRoleName("");
-      setIsCreating(false);
+      try {
+        setIsSubmitting(true);
+
+        // Call API to create a new sequence
+        await ApiService.createSequence(sessionId, roleName.trim());
+
+        // Update local state
+        addSequence(roleName.trim());
+        setRoleName("");
+        setIsCreating(false);
+        toast.success(`Sequence created for ${roleName.trim()}`);
+      } catch (error) {
+        console.error("Error creating sequence:", error);
+        toast.error("Failed to create sequence");
+
+        // Still update local state for development if API fails
+        addSequence(roleName.trim());
+        setRoleName("");
+        setIsCreating(false);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -43,18 +65,21 @@ export function EmptyState() {
               onChange={(e) => setRoleName(e.target.value)}
               onKeyPress={handleKeyPress}
               className="bg-input border-input-border text-input-foreground"
+              disabled={isSubmitting}
             />
             <div className="flex space-x-2">
               <Button
                 className="flex-1 bg-primary hover:bg-primary/90"
                 onClick={handleCreateSequence}
+                disabled={isSubmitting}
               >
-                Create Sequence
+                {isSubmitting ? "Creating..." : "Create Sequence"}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setIsCreating(false)}
                 className="border-border"
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
