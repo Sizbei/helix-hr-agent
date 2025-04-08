@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { WebSocketClient } from "@/components/WebSocketClient";
 import { MemoryDebugButton } from "@/components/MemoryDebug";
+import { ContextInitModal } from "@/components/ContextModal";
 
 export default function Home() {
   const { sequences } = useHelixStore();
@@ -30,6 +31,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <ContextInitModal />
                 <Button
                   variant="outline"
                   size="icon"

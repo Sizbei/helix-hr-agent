@@ -26,6 +26,10 @@ interface NewSequenceResponse {
   newSequence: Sequence;
 }
 
+interface ContextResponse {
+  message: string;
+}
+
 // Error handler utility function
 const handleApiError = (error: any) => {
   console.error("API Error:", error);
@@ -227,6 +231,32 @@ export const ApiService = {
           },
         }
       );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  // Initialize a context for a session
+  async initializeContext(
+    sessionId: string,
+    context: string
+  ): Promise<ContextResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/context/${sessionId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          context,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
