@@ -48,13 +48,13 @@ export function SequenceStep({
   };
 
   return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-slate-50 border-b">
+    <Card className="border-border shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 bg-muted border-b">
         <div className="flex items-center space-x-2">
           {step.stepType === "email" ? (
-            <Mail className="h-4 w-4 text-blue-600" />
+            <Mail className="h-4 w-4 text-primary" />
           ) : (
-            <Linkedin className="h-4 w-4 text-blue-600" />
+            <Linkedin className="h-4 w-4 text-primary" />
           )}
           <CardTitle className="text-sm font-medium">
             Step {stepNumber}:{" "}
@@ -63,7 +63,7 @@ export function SequenceStep({
         </div>
 
         {step.delay > 0 && (
-          <div className="flex items-center text-xs text-slate-500">
+          <div className="flex items-center text-xs text-muted-foreground">
             <Clock className="h-3 w-3 mr-1" />
             <span>
               Send after {step.delay} day{step.delay > 1 ? "s" : ""}
@@ -84,6 +84,7 @@ export function SequenceStep({
                     setEditedStep({ ...editedStep, subject: e.target.value })
                   }
                   placeholder="Email subject line"
+                  className="bg-input border-input-border text-input-foreground"
                 />
               </div>
             )}
@@ -97,6 +98,7 @@ export function SequenceStep({
                 }
                 placeholder="Write your message here..."
                 rows={5}
+                className="bg-input border-input-border text-input-foreground"
               />
             </div>
 
@@ -112,6 +114,7 @@ export function SequenceStep({
                     delay: parseInt(e.target.value) || 0,
                   })
                 }
+                className="bg-input border-input-border text-input-foreground"
               />
             </div>
           </>
@@ -120,13 +123,13 @@ export function SequenceStep({
             {step.stepType === "email" && step.subject && (
               <div className="space-y-1">
                 <h4 className="font-medium text-sm">Subject</h4>
-                <p className="text-slate-900">{step.subject}</p>
+                <p className="text-foreground">{step.subject}</p>
               </div>
             )}
 
             <div className="space-y-1">
               <h4 className="font-medium text-sm">Message</h4>
-              <div className="p-3 bg-slate-50 rounded-md whitespace-pre-wrap text-slate-900">
+              <div className="p-3 bg-muted rounded-md whitespace-pre-wrap text-foreground">
                 {step.body}
               </div>
             </div>
@@ -134,7 +137,7 @@ export function SequenceStep({
         )}
       </CardContent>
 
-      <CardFooter className="px-4 py-3 border-t bg-slate-50 flex justify-end space-x-2">
+      <CardFooter className="px-4 py-3 border-t bg-muted flex justify-end space-x-2">
         {isEditing ? (
           <>
             <Button variant="outline" size="sm" onClick={handleCancelEdit}>
@@ -143,7 +146,7 @@ export function SequenceStep({
             <Button
               size="sm"
               onClick={handleSaveChanges}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               <Save className="h-4 w-4 mr-1" />
               Save Changes
@@ -155,7 +158,7 @@ export function SequenceStep({
               variant="outline"
               size="sm"
               onClick={handleRemoveStep}
-              className="text-red-500 hover:text-red-600"
+              className="text-destructive hover:text-destructive/90"
             >
               <Trash2 className="h-4 w-4 mr-1" />
               Remove

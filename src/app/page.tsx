@@ -135,24 +135,27 @@ export default function Home() {
   }, [messages, addMessage, setLoading, addSequence, addSequenceStep]);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-zinc-950 p-6">
-      <Card className="w-full max-w-7xl h-[90vh] overflow-hidden bg-zinc-900 border-zinc-800 shadow-2xl">
+    <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-background-alt p-6">
+      <Card className="w-full max-w-7xl h-[90vh] overflow-hidden bg-background border-border shadow-2xl">
         <CardContent className="p-0">
           <div className="flex flex-col w-full h-full">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-background">
               <div className="flex items-center">
-                <h1 className="text-xl font-bold text-zinc-100">HELIX AI</h1>
-                <div className="ml-1 px-2 py-1 text-xs bg-zinc-800 text-zinc-300 rounded-md">
+                <h1 className="text-xl font-bold text-foreground">HELIX AI</h1>
+                <div className="ml-1 px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md">
                   HR AGENT
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-400">3 ACTIVE TASKS</span>
+                <span className="text-xs text-muted-foreground">
+                  3 ACTIVE TASKS
+                </span>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="border-border"
                 >
                   <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -162,14 +165,14 @@ export default function Home() {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex flex-1 border-t border-zinc-800 overflow-hidden">
+            <div className="flex flex-1 border-t border-border overflow-hidden">
               <ChatBar />
               <Workspace />
             </div>
           </div>
         </CardContent>
       </Card>
-      <Toaster theme="dark" />
+      <Toaster />
     </div>
   );
 }

@@ -23,14 +23,14 @@ export function Workspace() {
   };
 
   return (
-    <div className="w-3/5 h-full flex flex-col bg-zinc-900">
-      <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-zinc-100">Workspace</h2>
+    <div className="w-3/5 h-full flex flex-col bg-background">
+      <div className="p-4 border-b border-border flex justify-between items-center">
+        <h2 className="text-xl font-bold text-foreground">Workspace</h2>
 
         {sequences.length > 0 && !isCreatingSequence && (
           <Button
             onClick={() => setIsCreatingSequence(true)}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-secondary hover:bg-secondary/90"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             New Sequence
@@ -39,8 +39,8 @@ export function Workspace() {
       </div>
 
       {isCreatingSequence ? (
-        <div className="p-4 border-b border-zinc-800 bg-zinc-800">
-          <h3 className="text-sm font-medium mb-2 text-zinc-300">
+        <div className="p-4 border-b border-border bg-muted">
+          <h3 className="text-sm font-medium mb-2 text-muted-foreground">
             Create New Sequence
           </h3>
           <div className="flex gap-2">
@@ -48,11 +48,11 @@ export function Workspace() {
               placeholder="Enter role name (e.g. Software Engineer)"
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
-              className="flex-1 bg-zinc-700 border-zinc-600 text-zinc-100"
+              className="flex-1 bg-input border-input-border text-input-foreground"
             />
             <Button
               onClick={handleAddSequence}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-secondary hover:bg-secondary/90"
             >
               Create
             </Button>
@@ -62,7 +62,7 @@ export function Workspace() {
                 setIsCreatingSequence(false);
                 setNewRoleName("");
               }}
-              className="border-zinc-600 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100"
+              className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Cancel
             </Button>
@@ -71,9 +71,9 @@ export function Workspace() {
       ) : null}
 
       {sequences.length === 0 ? (
-        <div className="flex flex-col items-center justify-center flex-1 p-8 text-zinc-400">
+        <div className="flex flex-col items-center justify-center flex-1 p-8 text-muted-foreground">
           <div className="text-center max-w-md">
-            <h3 className="text-xl font-medium mb-2 text-zinc-300">
+            <h3 className="text-xl font-medium mb-2 text-foreground">
               RESEARCHING...
             </h3>
             <p className="mb-6">
@@ -81,7 +81,7 @@ export function Workspace() {
             </p>
             <Button
               onClick={() => setIsCreatingSequence(true)}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-primary hover:bg-primary/90"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Create Sequence
@@ -94,13 +94,13 @@ export function Workspace() {
           onValueChange={setActiveSequence}
           className="flex-1 flex flex-col"
         >
-          <div className="border-b border-zinc-800">
-            <TabsList className="h-12 bg-zinc-800 px-4 rounded-none">
+          <div className="border-b border-border">
+            <TabsList className="h-12 bg-muted px-4 rounded-none">
               {sequences.map((sequence) => (
                 <TabsTrigger
                   key={sequence.id}
                   value={sequence.id}
-                  className="data-[state=active]:bg-zinc-900 data-[state=active]:text-zinc-100 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-500 rounded-none text-zinc-400"
+                  className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-muted-foreground"
                 >
                   {sequence.role}
                 </TabsTrigger>
@@ -115,9 +115,9 @@ export function Workspace() {
               className="flex-1 p-4 overflow-y-auto space-y-4 mt-0"
             >
               {sequence.steps.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <p className="mb-4">No steps in this sequence yet</p>
-                  <Button className="bg-indigo-600 hover:bg-indigo-700">
+                  <Button className="bg-primary hover:bg-primary/90">
                     Add First Step
                   </Button>
                 </div>
